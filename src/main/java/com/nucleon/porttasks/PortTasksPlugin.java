@@ -634,7 +634,13 @@ public class PortTasksPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(final GameStateChanged event)
 	{
-		switch (event.getGameState())
+		GameState state = event.getGameState();
+		if (state == GameState.HOPPING || state == GameState.LOGGING_IN || state == GameState.LOGIN_SCREEN)
+		{
+			// Shortest Path may drop its path here; make the next plan re-send the leg.
+			routingService.resetShortestPath();
+		}
+		switch (state)
 		{
 			case HOPPING:
 			case LOADING:
@@ -735,6 +741,12 @@ public class PortTasksPlugin extends Plugin
 	@Subscribe
 	private void onGameTick(GameTick event)
 	{
+		// Plans are made on varbit changes; a plugin restart or a routing toggle changes none, so make sure
+		// there is one. Cheap: returns at once while the boat is at sea.
+		if (config.routingEnabled() && routingService.plan() == null && !courierTasks.isEmpty())
+		{
+			routingService.replan(courierTasks);
+		}
 		// prune tracked objects that have passed their timer
 		bountyCorpses.removeIf(corpse -> Instant.now().toEpochMilli() > corpse.getStartTime().toEpochMilli() + corpse.getDespawnTime());
 	}

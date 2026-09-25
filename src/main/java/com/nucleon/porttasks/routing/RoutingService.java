@@ -40,7 +40,8 @@ public final class RoutingService
 	private final PortTasksConfig config;
 	private final BoatLocator boats;
 	private final EventBus eventBus;
-	/** The target last sent to Shortest Path, or null if we haven't set one. */
+	/** The leg last sent to Shortest Path (start and target ports), or nulls if we haven't set one. */
+	private PortLocation shortestPathStart;
 	private PortLocation shortestPathTarget;
 	private final RouteGraph graph = new RouteGraph();
 	private final RoutePlanner planner = new RoutePlanner(graph::distance);
@@ -138,7 +139,7 @@ public final class RoutingService
 			target = config.routingEnd().port();
 		}
 		nextLeg = target == null ? Collections.emptyList() : graph.points(start, target);
-		updateShortestPath(target);
+		updateShortestPath(start, target);
 		log.info("[routing] from {}: {}{}", start.getName(), plan,
 			outOfRegion.isEmpty() ? "" : " | out of region: " + outOfRegion);
 	}
@@ -148,17 +149,34 @@ public final class RoutingService
 		plan = null;
 		planStart = null;
 		nextLeg = Collections.emptyList();
-		updateShortestPath(null);
+		updateShortestPath(null, null);
 	}
 
-	/** Points Shortest Path at the next stop's dock, or clears the target we set. Only sends on change. */
-	private void updateShortestPath(PortLocation target)
+	/**
+	 * Forget what Shortest Path was told, so the next plan re-sends it. Called on logout and world hop,
+	 * where Shortest Path may have dropped its path.
+	 */
+	public void resetShortestPath()
 	{
-		if (!config.routingUseShortestPath() || !config.routingEnabled())
+		shortestPathStart = null;
+		shortestPathTarget = null;
+	}
+
+	/**
+	 * Points Shortest Path at the next stop's dock, or clears the target we set. Only sends on change.
+	 *
+	 * The start is given explicitly (the boat's dock) rather than left to Shortest Path, which would use the
+	 * player's position: that fails right after login (no player yet, and the request is silently dropped) and
+	 * on a boat (the player is in the boat's own coordinates).
+	 */
+	private void updateShortestPath(PortLocation start, PortLocation target)
+	{
+		if (!config.routingUseShortestPath() || !config.routingEnabled() || target == null)
 		{
+			start = null;
 			target = null;
 		}
-		if (target == shortestPathTarget)
+		if (target == shortestPathTarget && start == shortestPathStart)
 		{
 			return;
 		}
@@ -169,10 +187,12 @@ public final class RoutingService
 		else
 		{
 			Map<String, Object> data = new HashMap<>();
+			data.put("start", start.getNavigationLocation());
 			data.put("target", target.getNavigationLocation());
 			eventBus.post(new PluginMessage(SHORTEST_PATH, "path", data));
 		}
-		log.debug("[routing] Shortest Path target {} -> {}", shortestPathTarget, target);
+		log.info("[routing] Shortest Path leg: {} -> {}", start, target);
+		shortestPathStart = start;
 		shortestPathTarget = target;
 	}
 }
