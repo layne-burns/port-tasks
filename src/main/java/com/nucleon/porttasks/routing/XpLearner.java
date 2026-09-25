@@ -2,7 +2,6 @@ package com.nucleon.porttasks.routing;
 
 import com.google.gson.Gson;
 import java.util.HashMap;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 
