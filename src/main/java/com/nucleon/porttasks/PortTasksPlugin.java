@@ -33,6 +33,7 @@ import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
+import com.nucleon.porttasks.routing.RoutingService;
 import com.nucleon.porttasks.routing.XpLearner;
 import com.google.inject.Provides;
 import com.nucleon.porttasks.enums.BountyTaskData;
@@ -162,6 +163,7 @@ public class PortTasksPlugin extends Plugin
 	private RoutingDiagnostics routingDiagnostics;
 	private BoatLocator boatLocator;
 	private XpLearner xpLearner;
+	RoutingService routingService;
 	@Getter
 	List<BountyTask> bountyTasks = new ArrayList<>();
 	@Getter
@@ -323,6 +325,7 @@ public class PortTasksPlugin extends Plugin
 		log.info("Starting plugin Port Tasks");
 
 		boatLocator = new BoatLocator(client);
+		routingService = new RoutingService(config, boatLocator);
 		clientThread.invokeLater(() ->
 		{
 			if (client.getGameState().getState() < GameState.LOGIN_SCREEN.getState())
@@ -436,6 +439,10 @@ public class PortTasksPlugin extends Plugin
 	{
 		if (!event.getGroup().equals(PortTasksConfig.CONFIG_GROUP))
 			return;
+		if (event.getKey().startsWith("routing"))
+		{
+			clientThread.invokeLater(() -> routingService.replan(courierTasks));
+		}
 		switch (event.getKey())
 		{
 			case "drawOverlay":
@@ -543,6 +550,7 @@ public class PortTasksPlugin extends Plugin
 			PortTaskTrigger varbit = PortTaskTrigger.fromId(event.getVarbitId());
 			int value = event.getValue();
 			handlePortTaskTrigger(varbit, value);
+			routingService.replan(courierTasks);
 		}
 		else if (varbitId == VarbitID.SAILING_BOAT_FACILITY_LOCKEDIN)
 		{
@@ -551,6 +559,7 @@ public class PortTasksPlugin extends Plugin
 		else if (RoutingDiagnostics.BOAT_VARBITS.containsKey(varbitId))
 		{
 			routingDiagnostics.logBoatVarbit(varbitId, event.getValue());
+			routingService.replan(courierTasks);
 		}
 	}
 

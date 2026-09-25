@@ -89,7 +89,10 @@ No available plugin does sea pathfinding. As of 2026-09-24, Shortest Path says i
 
 `p₀` at sea: use the nearest point on any port path, or the distance to the nearest port plus that port's `d`.
 
-### 3.1 Region, first pass
+### 3.1 Region
+
+**Changed 2026-09-25:** routes are planned for **all ports** by default; every port is connected in the graph (tested). The western set below remains as an off-by-default setting (`routingWestOnly`) until routes are classified properly.
+
 
 Western ports only:
 - Void Knights' Outpost (Pest Control), Deepfin Point, Aldarin, Sunset Coast

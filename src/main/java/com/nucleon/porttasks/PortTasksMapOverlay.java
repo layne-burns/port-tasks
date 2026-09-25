@@ -70,6 +70,11 @@ class PortTasksMapOverlay extends Overlay
 
 	private void renderOverlayLines(Graphics2D g)
 	{
+		if (plugin.routingService.isActive())
+		{
+			WorldLines.createWorldMapLines(g, client, plugin.routingService.nextLeg(), config.routingLegColor());
+			return;
+		}
 		for (CourierTask tasks : plugin.courierTasks)
 		{
 			Color overlayColor = tasks.getOverlayColor();

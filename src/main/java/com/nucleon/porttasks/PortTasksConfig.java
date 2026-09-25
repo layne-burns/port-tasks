@@ -26,6 +26,7 @@
  */
 package com.nucleon.porttasks;
 
+import com.nucleon.porttasks.routing.RouteEnd;
 import java.awt.Color;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -460,6 +461,67 @@ public interface PortTasksConfig extends Config
 		position = 5
 	)
 	String routing = "routingSection";
+
+	@ConfigItem(
+		keyName = "routingEnabled",
+		name = "Plan stop order",
+		description = "Plan the best order of stops for your courier tasks and draw only the path to the next stop",
+		section = routing,
+		position = 0
+	)
+	default boolean routingEnabled()
+	{
+		return true;
+	}
+
+	@Range(max = 500)
+	@ConfigItem(
+		keyName = "routingStopCost",
+		name = "Stop cost (tiles)",
+		description = "How much one port stop costs, as tiles of sailing (docking, walking to the ledger, loading)",
+		section = routing,
+		position = 3
+	)
+	default int routingStopCost()
+	{
+		return 30;
+	}
+
+	@ConfigItem(
+		keyName = "routingEnd",
+		name = "Finish at",
+		description = "Where the route should end: anywhere, or the far end of your sweep",
+		section = routing,
+		position = 4
+	)
+	default RouteEnd routingEnd()
+	{
+		return RouteEnd.ANYWHERE;
+	}
+
+	@ConfigItem(
+		keyName = "routingWestOnly",
+		name = "Western ports only",
+		description = "Only plan tasks whose ports are all in the western region; others are listed as out of region",
+		section = routing,
+		position = 5
+	)
+	default boolean routingWestOnly()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "routingLegColor",
+		name = "Next leg colour",
+		description = "Colour of the path to the next stop",
+		section = routing,
+		position = 6
+	)
+	default Color routingLegColor()
+	{
+		return new Color(0, 220, 255);
+	}
 
 	@ConfigItem(
 		keyName = "routingCrystalShardValue",

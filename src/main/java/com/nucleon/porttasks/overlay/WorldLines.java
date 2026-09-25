@@ -79,19 +79,30 @@ public class WorldLines
 
 	public static void drawPortTaskLinesOnWorld(Graphics2D graphics, Client client, CourierTask task, TracerConfig tracerConfig, boolean offset, int clip, int drawDistance)
 	{
+		List<WorldPoint> journey = task.getData().dockMarkers.getFullPath();
+		if (task.getData().reversePath)
+		{
+			Collections.reverse(journey);
+		}
+		drawPathOnWorld(graphics, client, journey, task.getOverlayColor(), offset ? task.getSlot() : 0, tracerConfig, clip, drawDistance);
+	}
+
+	/** Draws any path in the world around the boat, e.g. the planned next leg (routing extension). */
+	public static void drawPathOnWorld(Graphics2D graphics, Client client, List<WorldPoint> path, Color color, int heightSlot, TracerConfig tracerConfig, int clip, int drawDistance)
+	{
 		if (tracerConfig.isTracerEnabled())
 		{
-			renderTaskLinesTracer(graphics, client, task, clip, offset, tracerConfig, drawDistance);
+			renderTaskLinesTracer(graphics, client, path, color, heightSlot, clip, tracerConfig, drawDistance);
 		}
 		else
 		{
-			renderTaskLines(graphics, client, task, clip, offset, drawDistance);
+			renderTaskLines(graphics, client, path, color, heightSlot, clip, drawDistance);
 		}
 	}
 
-	private static void renderTaskLines(Graphics2D g, Client client, CourierTask task, int clip, boolean offset, int drawDistance)
+	private static void renderTaskLines(Graphics2D g, Client client, List<WorldPoint> path, Color color, int heightSlot, int clip, int drawDistance)
 	{
-		int heightOffset = offset ? (task.getSlot() * 100) : 0;
+		int heightOffset = heightSlot * 100;
 		clip += (clip * 128);
 		WorldView playerWorldView = client.getLocalPlayer().getWorldView();
 		WorldPoint playerWorldPoint = client.getLocalPlayer().getWorldLocation();
@@ -111,14 +122,9 @@ public class WorldLines
 
 			if (boatMainWorldPoint != null)
 			{
-				List<WorldPoint> journey = task.getData().dockMarkers.getFullPath();
-				Color overlayColor = task.getOverlayColor();
+				List<WorldPoint> journey = path;
+				Color overlayColor = color;
 				LocalPoint boatMainLocalPoint = WorldPerspective.worldToLocal(client, boatMainWorldPoint);
-
-				if (task.getData().reversePath)
-				{
-					Collections.reverse(journey);
-				}
 
 				for (int i = 0; i < journey.size() - 1; i++)
 				{
@@ -131,9 +137,9 @@ public class WorldLines
 			}
 		}
 	}
-	private static void renderTaskLinesTracer(Graphics2D g, Client client, CourierTask task, int clip, boolean offset, TracerConfig tracerConfig, int drawDistance)
+	private static void renderTaskLinesTracer(Graphics2D g, Client client, List<WorldPoint> path, Color color, int heightSlot, int clip, TracerConfig tracerConfig, int drawDistance)
 	{
-		int heightOffset = offset ? (task.getSlot() * 100) : 0;
+		int heightOffset = heightSlot * 100;
 		clip += (clip * 128);
 		WorldView playerWorldView = client.getLocalPlayer().getWorldView();
 		WorldPoint playerWorldPoint = client.getLocalPlayer().getWorldLocation();
@@ -153,14 +159,9 @@ public class WorldLines
 
 			if (boatMainWorldPoint != null)
 			{
-				List<WorldPoint> journey = task.getData().dockMarkers.getFullPath();
-				Color overlayColor = task.getOverlayColor();
+				List<WorldPoint> journey = path;
+				Color overlayColor = color;
 				LocalPoint boatMainLocalPoint = WorldPerspective.worldToLocal(client, boatMainWorldPoint);
-
-				if (task.getData().reversePath)
-				{
-					Collections.reverse(journey);
-				}
 
 				for (int i = 0; i < journey.size() - 1; i++)
 				{

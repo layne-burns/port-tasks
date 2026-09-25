@@ -89,6 +89,23 @@ public class RouteGraphTest
 	}
 
 	@Test
+	public void everyPortConnected()
+	{
+		StringBuilder unreachable = new StringBuilder();
+		for (PortLocation a : ports())
+		{
+			for (PortLocation b : ports())
+			{
+				if (graph.distance(a, b) == Double.POSITIVE_INFINITY)
+				{
+					unreachable.append(a).append(" -> ").append(b).append("; ");
+				}
+			}
+		}
+		assertEquals("", unreachable.toString());
+	}
+
+	@Test
 	public void hopsAddUpToTheDistanceAndChainEndToEnd()
 	{
 		for (PortLocation a : WEST)
