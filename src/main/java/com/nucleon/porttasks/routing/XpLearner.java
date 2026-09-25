@@ -1,8 +1,6 @@
 package com.nucleon.porttasks.routing;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +18,12 @@ import net.runelite.client.config.ConfigManager;
 @Slf4j
 public final class XpLearner
 {
+	/** Task id -> learned base XP, as stored in the profile. */
+	private static final class LearnedXp extends HashMap<Integer, Integer>
+	{
+	}
+
 	private static final String KEY = "routingLearnedXp";
-	private static final Type MAP = new TypeToken<Map<Integer, Integer>>() { }.getType();
 	private static final int MATCH_TICKS = 3;
 	private static final double MAX_DEVIATION = 0.15;
 
@@ -29,7 +31,7 @@ public final class XpLearner
 	private final String group;
 	private final Gson gson;
 	private final CourierWikiData wiki;
-	private final Map<Integer, Integer> learned = new HashMap<>();
+	private final LearnedXp learned = new LearnedXp();
 
 	private int pendingTaskId = -1;
 	private int pendingTick;
@@ -46,7 +48,7 @@ public final class XpLearner
 		{
 			try
 			{
-				Map<Integer, Integer> m = gson.fromJson(stored, MAP);
+				LearnedXp m = gson.fromJson(stored, LearnedXp.class);
 				if (m != null)
 				{
 					learned.putAll(m);
