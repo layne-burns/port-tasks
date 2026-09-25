@@ -58,16 +58,19 @@ public final class RoutingService
 		this.eventBus = eventBus;
 	}
 
-	/** True when routing is on and there is a leg; the per-task paths are then hidden. */
+	/**
+	 * True when routing is on and there is a plan; the per-task paths are then hidden. There may be no leg to
+	 * draw (all remaining work is at the boat's port), which must not bring the per-task paths back.
+	 */
 	public boolean isActive()
 	{
-		return config.routingEnabled() && !nextLeg.isEmpty();
+		return config.routingEnabled() && plan != null;
 	}
 
-	/** True when our overlays should draw the leg themselves (Shortest Path isn't drawing it). */
+	/** True when our overlays should draw the leg themselves (there is one, and Shortest Path isn't drawing it). */
 	public boolean drawsOwnLeg()
 	{
-		return isActive() && !config.routingUseShortestPath();
+		return isActive() && !nextLeg.isEmpty() && !config.routingUseShortestPath();
 	}
 
 	public List<WorldPoint> nextLeg()

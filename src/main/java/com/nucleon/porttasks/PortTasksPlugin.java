@@ -33,6 +33,7 @@ import com.nucleon.porttasks.routing.BagCounter;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
+import com.nucleon.porttasks.routing.DepositGuard;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
 import com.nucleon.porttasks.routing.RoutingService;
@@ -85,8 +86,8 @@ import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
-import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.StatChanged;
@@ -170,6 +171,7 @@ public class PortTasksPlugin extends Plugin
 	private XpLearner xpLearner;
 	RoutingService routingService;
 	BagCounter bagCounter;
+	private DepositGuard depositGuard;
 	private final WantedItems wantedItems = new WantedItems();
 	private BoardScorer boardScorer;
 	/** Scores of the last notice board's offered courier tasks, by dbrow (routing extension). */
@@ -381,6 +383,7 @@ public class PortTasksPlugin extends Plugin
 		CourierWikiData courierWikiData = CourierWikiData.load(gson);
 		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
 		bagCounter = new BagCounter(courierWikiData);
+		depositGuard = new DepositGuard(client);
 		wantedItems.parse(config.routingWantedItems());
 		RewardValuer rewardValuer = new RewardValuer(courierWikiData, itemManager, wantedItems);
 		boardScorer = new BoardScorer(routingService.graph(), courierWikiData, xpLearner, rewardValuer, wantedItems, config);
@@ -774,6 +777,24 @@ public class PortTasksPlugin extends Plugin
 		{
 			handleTaskCompleted();
 			return;
+		}
+	}
+
+	/** Routing extension: block depositing a crate at the wrong port's ledger (see DepositGuard). */
+	@SuppressWarnings("unused")
+	@Subscribe
+	private void onMenuOptionClicked(final MenuOptionClicked event)
+	{
+		if (!config.routingBlockWrongDeposit())
+		{
+			return;
+		}
+		String reason = depositGuard.check(event.getMenuOption(), event.getId(), courierTasks);
+		if (reason != null)
+		{
+			event.consume();
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", reason, null);
+			log.info("[routing] {}", reason);
 		}
 	}
 

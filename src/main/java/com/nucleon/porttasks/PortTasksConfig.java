@@ -549,6 +549,18 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "routingBlockWrongDeposit",
+		name = "Block wrong-port deposits",
+		description = "Block 'Deposit' at a ledger when every crate you hold is for another port (with a chat message). Shift-click deposits anyway",
+		section = routing,
+		position = 10
+	)
+	default boolean routingBlockWrongDeposit()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "routingBagCounts",
 		name = "Bag counts",
 		description = "In the route panel, count the port bags received this session by type and size",
