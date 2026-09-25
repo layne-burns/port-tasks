@@ -29,6 +29,9 @@ package com.nucleon.porttasks;
 import com.google.common.base.MoreObjects;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.nucleon.porttasks.routing.CourierWikiData;
+import com.nucleon.porttasks.routing.RewardValuer;
+import com.nucleon.porttasks.routing.RoutingDiagnostics;
 import com.google.inject.Provides;
 import com.nucleon.porttasks.enums.BountyTaskData;
 import com.nucleon.porttasks.enums.PortLocation;
@@ -153,6 +156,8 @@ public class PortTasksPlugin extends Plugin
 	NoticeBoardTooltip noticeBoardTooltip;
 	@Getter
 	List<CourierTask> courierTasks = new ArrayList<>();
+	// Routing extension (SPEC-routing.md).
+	private RoutingDiagnostics routingDiagnostics;
 	@Getter
 	List<BountyTask> bountyTasks = new ArrayList<>();
 	@Getter
@@ -340,6 +345,9 @@ public class PortTasksPlugin extends Plugin
 			return true;
 		});
 
+		CourierWikiData courierWikiData = CourierWikiData.load(gson);
+		routingDiagnostics = new RoutingDiagnostics(client, courierWikiData, new RewardValuer(courierWikiData, itemManager, config));
+
 		pluginPanel = new PortTasksPluginPanel(this, clientThread, itemManager, client, config);
 
 		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), ICON_FILE);
@@ -523,6 +531,10 @@ public class PortTasksPlugin extends Plugin
 		else if (varbitId == VarbitID.SAILING_BOAT_FACILITY_LOCKEDIN)
 		{
 			lockedIn = event.getValue() != 0;
+		}
+		else if (RoutingDiagnostics.BOAT_VARBITS.containsKey(varbitId))
+		{
+			routingDiagnostics.logBoatVarbit(varbitId, event.getValue());
 		}
 	}
 
@@ -994,6 +1006,7 @@ public class PortTasksPlugin extends Plugin
 				if (courrierData != null)
 				{
 					courierTasks.add(new CourierTask(courrierData, slot, false, 0, true, true, getNavColorForSlot(trigger.getSlot()), 0));
+					routingDiagnostics.logTask(slot, courrierData);
 					pluginPanel.rebuild();
 					return;
 				}

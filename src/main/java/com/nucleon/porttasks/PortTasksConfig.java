@@ -454,6 +454,37 @@ public interface PortTasksConfig extends Config
 		return Npcs.TASK;
 	}
 
+	@ConfigSection(
+		name = "Routing",
+		description = "Courier route planning (personal extension)",
+		position = 5
+	)
+	String routing = "routingSection";
+
+	@ConfigItem(
+		keyName = "routingCrystalShardValue",
+		name = "Crystal shard value",
+		description = "Crystal shards can't be alched; what one is worth to you, in coins",
+		section = routing,
+		position = 1
+	)
+	default int routingCrystalShardValue()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "routingSpiritFlakeValue",
+		name = "Spirit flake value",
+		description = "Spirit flakes can't be alched. Each gives a 50% chance of an extra fish, so about half a fish's value",
+		section = routing,
+		position = 2
+	)
+	default int routingSpiritFlakeValue()
+	{
+		return 0;
+	}
+
 	enum Overlay
 	{
 		NONE,

@@ -1,0 +1,2224 @@
+{
+ "source": {
+  "Tiny port reward bag": 15350272,
+  "Small port reward bag": 15350414,
+  "Medium port reward bag": 15350416,
+  "Large port reward bag": 15350420,
+  "Huge port reward bag": 15347369
+ },
+ "shared": {
+  "Tiny": [
+   {
+    "name": "Coins",
+    "id": null,
+    "min": 8875,
+    "max": 11640,
+    "noted": false
+   },
+   {
+    "name": "Fish offcuts",
+    "id": 11334,
+    "min": 15,
+    "max": 56,
+    "noted": false
+   },
+   {
+    "name": "Bronze cannonball",
+    "id": 31906,
+    "min": 40,
+    "max": 59,
+    "noted": false
+   },
+   {
+    "name": "Iron cannonball",
+    "id": 31908,
+    "min": 41,
+    "max": 59,
+    "noted": false
+   },
+   {
+    "name": "Steel cannonball",
+    "id": 2,
+    "min": 41,
+    "max": 60,
+    "noted": false
+   },
+   {
+    "name": "Mithril cannonball",
+    "id": 31910,
+    "min": 44,
+    "max": 54,
+    "noted": false
+   },
+   {
+    "name": "Copper ore",
+    "id": 436,
+    "min": 10,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Tin ore",
+    "id": 438,
+    "min": 14,
+    "max": 17,
+    "noted": true
+   },
+   {
+    "name": "Iron ore",
+    "id": 440,
+    "min": 12,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Coal",
+    "id": 453,
+    "min": 12,
+    "max": 19,
+    "noted": true
+   },
+   {
+    "name": "Bronze nails",
+    "id": 4819,
+    "min": 21,
+    "max": 30,
+    "noted": false
+   },
+   {
+    "name": "Iron nails",
+    "id": 4820,
+    "min": 20,
+    "max": 30,
+    "noted": false
+   },
+   {
+    "name": "Steel nails",
+    "id": 1539,
+    "min": 20,
+    "max": 30,
+    "noted": false
+   },
+   {
+    "name": "Mithril nails",
+    "id": 4822,
+    "min": 20,
+    "max": 30,
+    "noted": false
+   },
+   {
+    "name": "Bronze bar",
+    "id": 2349,
+    "min": 11,
+    "max": 19,
+    "noted": true
+   },
+   {
+    "name": "Iron bar",
+    "id": 2351,
+    "min": 10,
+    "max": 18,
+    "noted": true
+   },
+   {
+    "name": "Steel bar",
+    "id": 2353,
+    "min": 12,
+    "max": 16,
+    "noted": true
+   },
+   {
+    "name": "Sawmill coupon (wood plank)",
+    "id": 32083,
+    "min": 10,
+    "max": 20,
+    "noted": false
+   },
+   {
+    "name": "Sawmill coupon (oak plank)",
+    "id": 32085,
+    "min": 5,
+    "max": 15,
+    "noted": false
+   },
+   {
+    "name": "Plank",
+    "id": 960,
+    "min": 13,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Oak plank",
+    "id": 8778,
+    "min": 10,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Teak plank",
+    "id": 8780,
+    "min": 9,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Repair kit",
+    "id": 31964,
+    "min": 6,
+    "max": 14,
+    "noted": true
+   },
+   {
+    "name": "Oak repair kit",
+    "id": 31967,
+    "min": 6,
+    "max": 14,
+    "noted": true
+   },
+   {
+    "name": "Teak repair kit",
+    "id": 31970,
+    "min": 5,
+    "max": 13,
+    "noted": true
+   }
+  ],
+  "Small": [
+   {
+    "name": "Iron ore",
+    "id": 440,
+    "min": 10,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Coal",
+    "id": 453,
+    "min": 16,
+    "max": 18,
+    "noted": true
+   },
+   {
+    "name": "Mithril ore",
+    "id": 447,
+    "min": 13,
+    "max": 13,
+    "noted": true
+   },
+   {
+    "name": "Iron bar",
+    "id": 2351,
+    "min": 20,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Steel bar",
+    "id": 2353,
+    "min": 12,
+    "max": 15,
+    "noted": true
+   },
+   {
+    "name": "Mithril bar",
+    "id": 2359,
+    "min": 19,
+    "max": 19,
+    "noted": true
+   },
+   {
+    "name": "Oak plank",
+    "id": 8778,
+    "min": 10,
+    "max": 12,
+    "noted": true
+   },
+   {
+    "name": "Teak plank",
+    "id": 8780,
+    "min": 11,
+    "max": 11,
+    "noted": true
+   },
+   {
+    "name": "Mahogany plank",
+    "id": 8782,
+    "min": 7,
+    "max": 7,
+    "noted": true
+   },
+   {
+    "name": "Oak repair kit",
+    "id": 31967,
+    "min": 7,
+    "max": 7,
+    "noted": true
+   },
+   {
+    "name": "Teak repair kit",
+    "id": 31970,
+    "min": 7,
+    "max": 15,
+    "noted": true
+   },
+   {
+    "name": "Mahogany repair kit",
+    "id": 31973,
+    "min": 9,
+    "max": 12,
+    "noted": true
+   },
+   {
+    "name": "Steel cannonball",
+    "id": 2,
+    "min": 53,
+    "max": 53,
+    "noted": false
+   },
+   {
+    "name": "Mithril cannonball",
+    "id": 31910,
+    "min": 40,
+    "max": 41,
+    "noted": false
+   },
+   {
+    "name": "Iron nails",
+    "id": 4820,
+    "min": 25,
+    "max": 29,
+    "noted": false
+   },
+   {
+    "name": "Steel nails",
+    "id": 1539,
+    "min": 22,
+    "max": 30,
+    "noted": false
+   },
+   {
+    "name": "Mithril nails",
+    "id": 4822,
+    "min": 22,
+    "max": 26,
+    "noted": false
+   },
+   {
+    "name": "Sawmill coupon (oak plank)",
+    "id": 32085,
+    "min": 15,
+    "max": 15,
+    "noted": false
+   },
+   {
+    "name": "Sawmill coupon (teak plank)",
+    "id": 34068,
+    "min": 16,
+    "max": 16,
+    "noted": false
+   }
+  ],
+  "Medium": [
+   {
+    "name": "Coins",
+    "id": null,
+    "min": 23264,
+    "max": 23514,
+    "noted": false
+   },
+   {
+    "name": "Oak repair kit",
+    "id": 31967,
+    "min": 7,
+    "max": 15,
+    "noted": true
+   },
+   {
+    "name": "Teak repair kit",
+    "id": 31970,
+    "min": 7,
+    "max": 14,
+    "noted": true
+   },
+   {
+    "name": "Mahogany repair kit",
+    "id": 31973,
+    "min": 12,
+    "max": 12,
+    "noted": true
+   },
+   {
+    "name": "Oak plank",
+    "id": 8778,
+    "min": 11,
+    "max": 11,
+    "noted": true
+   },
+   {
+    "name": "Teak plank",
+    "id": 8780,
+    "min": 17,
+    "max": 17,
+    "noted": true
+   },
+   {
+    "name": "Mahogany plank",
+    "id": 8782,
+    "min": 11,
+    "max": 11,
+    "noted": true
+   },
+   {
+    "name": "Sawmill coupon (teak plank)",
+    "id": 34068,
+    "min": 19,
+    "max": 20,
+    "noted": false
+   },
+   {
+    "name": "Sawmill coupon (mahogany plank)",
+    "id": 34070,
+    "min": 14,
+    "max": 20,
+    "noted": false
+   },
+   {
+    "name": "Fine fish offcuts",
+    "id": 32307,
+    "min": 25,
+    "max": 25,
+    "noted": false
+   },
+   {
+    "name": "Mithril ore",
+    "id": 447,
+    "min": 14,
+    "max": 19,
+    "noted": true
+   },
+   {
+    "name": "Adamantite ore",
+    "id": 449,
+    "min": 12,
+    "max": 14,
+    "noted": true
+   },
+   {
+    "name": "Coal",
+    "id": 453,
+    "min": 14,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Steel cannonball",
+    "id": 2,
+    "min": 43,
+    "max": 60,
+    "noted": false
+   },
+   {
+    "name": "Mithril cannonball",
+    "id": 31910,
+    "min": 40,
+    "max": 59,
+    "noted": false
+   },
+   {
+    "name": "Adamant cannonball",
+    "id": 31912,
+    "min": 40,
+    "max": 52,
+    "noted": false
+   },
+   {
+    "name": "Steel bar",
+    "id": 2353,
+    "min": 12,
+    "max": 12,
+    "noted": true
+   },
+   {
+    "name": "Mithril bar",
+    "id": 2359,
+    "min": 11,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Adamantite bar",
+    "id": 2361,
+    "min": 11,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Steel nails",
+    "id": 1539,
+    "min": 29,
+    "max": 30,
+    "noted": false
+   },
+   {
+    "name": "Adamantite nails",
+    "id": 4823,
+    "min": 22,
+    "max": 25,
+    "noted": false
+   }
+  ],
+  "Large": [
+   {
+    "name": "Teak plank",
+    "id": 8780,
+    "min": 13,
+    "max": 18,
+    "noted": true
+   },
+   {
+    "name": "Mahogany plank",
+    "id": 8782,
+    "min": 19,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Camphor plank",
+    "id": 31432,
+    "min": 9,
+    "max": 15,
+    "noted": true
+   },
+   {
+    "name": "Mithril nails",
+    "id": 4822,
+    "min": 21,
+    "max": 24,
+    "noted": false
+   },
+   {
+    "name": "Adamantite nails",
+    "id": 4823,
+    "min": 28,
+    "max": 30,
+    "noted": false
+   },
+   {
+    "name": "Rune nails",
+    "id": 4824,
+    "min": 22,
+    "max": 26,
+    "noted": false
+   },
+   {
+    "name": "Mithril cannonball",
+    "id": 31910,
+    "min": 49,
+    "max": 58,
+    "noted": false
+   },
+   {
+    "name": "Adamant cannonball",
+    "id": 31912,
+    "min": 42,
+    "max": 59,
+    "noted": false
+   },
+   {
+    "name": "Rune cannonball",
+    "id": 31914,
+    "min": 49,
+    "max": 60,
+    "noted": false
+   },
+   {
+    "name": "Fine fish offcuts",
+    "id": 32307,
+    "min": 51,
+    "max": 53,
+    "noted": false
+   },
+   {
+    "name": "Coal",
+    "id": 453,
+    "min": 14,
+    "max": 14,
+    "noted": true
+   },
+   {
+    "name": "Adamantite ore",
+    "id": 449,
+    "min": 10,
+    "max": 17,
+    "noted": true
+   },
+   {
+    "name": "Runite ore",
+    "id": 451,
+    "min": 11,
+    "max": 11,
+    "noted": true
+   },
+   {
+    "name": "Mithril bar",
+    "id": 2359,
+    "min": 15,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Adamantite bar",
+    "id": 2361,
+    "min": 15,
+    "max": 15,
+    "noted": true
+   },
+   {
+    "name": "Runite bar",
+    "id": 2363,
+    "min": 7,
+    "max": 17,
+    "noted": true
+   },
+   {
+    "name": "Teak repair kit",
+    "id": 31970,
+    "min": 7,
+    "max": 10,
+    "noted": true
+   },
+   {
+    "name": "Sawmill coupon (mahogany plank)",
+    "id": 34070,
+    "min": 11,
+    "max": 19,
+    "noted": false
+   },
+   {
+    "name": "Sawmill coupon (camphor plank)",
+    "id": 34072,
+    "min": 13,
+    "max": 18,
+    "noted": false
+   },
+   {
+    "name": "Coins",
+    "id": null,
+    "min": 26859,
+    "max": 26859,
+    "noted": false
+   }
+  ],
+  "Huge": [
+   {
+    "name": "Coins",
+    "id": null,
+    "min": 54849,
+    "max": 57294,
+    "noted": false
+   },
+   {
+    "name": "Mahogany repair kit",
+    "id": 31973,
+    "min": 8,
+    "max": 8,
+    "noted": true
+   },
+   {
+    "name": "Ironwood repair kit",
+    "id": 31979,
+    "min": 7,
+    "max": 7,
+    "noted": true
+   },
+   {
+    "name": "Mahogany plank",
+    "id": 8782,
+    "min": 14,
+    "max": 18,
+    "noted": true
+   },
+   {
+    "name": "Camphor plank",
+    "id": 31432,
+    "min": 12,
+    "max": 12,
+    "noted": true
+   },
+   {
+    "name": "Ironwood plank",
+    "id": 31435,
+    "min": 11,
+    "max": 11,
+    "noted": true
+   },
+   {
+    "name": "Adamant cannonball",
+    "id": 31912,
+    "min": 59,
+    "max": 59,
+    "noted": false
+   },
+   {
+    "name": "Fine fish offcuts",
+    "id": 32307,
+    "min": 45,
+    "max": 56,
+    "noted": false
+   },
+   {
+    "name": "Coal",
+    "id": 453,
+    "min": 39,
+    "max": 39,
+    "noted": true
+   },
+   {
+    "name": "Mithril bar",
+    "id": 2359,
+    "min": 19,
+    "max": 19,
+    "noted": true
+   },
+   {
+    "name": "Adamantite bar",
+    "id": 2361,
+    "min": 11,
+    "max": 20,
+    "noted": true
+   },
+   {
+    "name": "Adamantite nails",
+    "id": 4823,
+    "min": 29,
+    "max": 30,
+    "noted": false
+   },
+   {
+    "name": "Adamantite ore",
+    "id": 449,
+    "min": 18,
+    "max": 18,
+    "noted": true
+   },
+   {
+    "name": "Runite ore",
+    "id": 451,
+    "min": 7,
+    "max": 7,
+    "noted": true
+   },
+   {
+    "name": "Sawmill coupon (camphor plank)",
+    "id": 34072,
+    "min": 11,
+    "max": 15,
+    "noted": false
+   },
+   {
+    "name": "Sawmill coupon (ironwood plank)",
+    "id": 34074,
+    "min": 10,
+    "max": 17,
+    "noted": false
+   },
+   {
+    "name": "Dragon nails",
+    "id": 31406,
+    "min": 10,
+    "max": 14,
+    "noted": false
+   },
+   {
+    "name": "Dragon metal sheet",
+    "id": 31996,
+    "min": 1,
+    "max": 1,
+    "noted": true
+   },
+   {
+    "name": "Dragon cannonball",
+    "id": 31916,
+    "min": 15,
+    "max": 55,
+    "noted": false,
+    "rarity": "Unknown"
+   }
+  ]
+ },
+ "signature": {
+  "Tiny": {
+   "Ardougne": [
+    {
+     "name": "Cake",
+     "id": 1891,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Brimhaven": [
+    {
+     "name": "Pineapple",
+     "id": 2114,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Cairn Isle": [
+    {
+     "name": "Uncut sapphire",
+     "id": 1623,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Catherby": [
+    {
+     "name": "Raw cod",
+     "id": 341,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Entrana": [
+    {
+     "name": "Big bones",
+     "id": 532,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Hosidius": [
+    {
+     "name": "Compost",
+     "id": 6032,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Land's End": [
+    {
+     "name": "Bird nest (empty)",
+     "id": 5075,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Musa Point": [
+    {
+     "name": "Banana",
+     "id": 1963,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "The Pandemonium": [
+    {
+     "name": "Grog",
+     "id": 1915,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Barnacle blaster",
+     "id": 31255,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Sailor's mirage",
+     "id": 31261,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Vodka",
+     "id": 2015,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Rum",
+     "id": 28896,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Port Khazard": [
+    {
+     "name": "Raw manta ray",
+     "id": 389,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Piscarilius": [
+    {
+     "name": "Raw anglerfish",
+     "id": 13439,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Port Sarim": [
+    {
+     "name": "Casket",
+     "id": 405,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Ruins of Unkah": [
+    {
+     "name": "Spirit flakes",
+     "id": 25588,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "Sunset Coast": [
+    {
+     "name": "Bucket of sand",
+     "id": 1783,
+     "min": 39,
+     "max": 40,
+     "noted": true
+    }
+   ],
+   "Aldarin": [
+    {
+     "name": "Grapes",
+     "id": 1987,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ],
+   "Civitas illa Fortis": [
+    {
+     "name": "Varlamorian kebab",
+     "id": 29900,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Corsair Cove": [
+    {
+     "name": "Steel scimitar",
+     "id": 1325,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Deepfin Point": [
+    {
+     "name": "Lead ore",
+     "id": 31716,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Etceteria": [
+    {
+     "name": "Teak logs",
+     "id": 6333,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Jatizso": [
+    {
+     "name": "Mithril ore",
+     "id": 447,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Lunar Isle": [
+    {
+     "name": "Astral rune",
+     "id": 9075,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Neitiznot": [
+    {
+     "name": "Yak-hide",
+     "id": 10818,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Piscatoris": [
+    {
+     "name": "Raw monkfish",
+     "id": 7944,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Roberts": [
+    {
+     "name": "Steel cannonball",
+     "id": 2,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Port Tyras": [
+    {
+     "name": "Zulrah's scales",
+     "id": 12934,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Prifddinas": [
+    {
+     "name": "Crystal shard",
+     "id": 23962,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "Red Rock": [
+    {
+     "name": "Elkhorn coral",
+     "id": 31481,
+     "min": 5,
+     "max": 5,
+     "noted": false
+    }
+   ],
+   "Rellekka": [
+    {
+     "name": "Fremennik helm",
+     "id": 3748,
+     "min": 1,
+     "max": 1,
+     "noted": false
+    }
+   ],
+   "The Summer Shore": [
+    {
+     "name": "Elkhorn frag",
+     "id": 31511,
+     "min": 2,
+     "max": 2,
+     "noted": false
+    }
+   ],
+   "Void Knights' Outpost": [
+    {
+     "name": "Steel platebody",
+     "id": 1119,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ]
+  },
+  "Small": {
+   "Aldarin": [
+    {
+     "name": "Grapes",
+     "id": 1987,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ],
+   "Ardougne": [
+    {
+     "name": "Cake",
+     "id": 1891,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Brimhaven": [
+    {
+     "name": "Pineapple",
+     "id": 2114,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Cairn Isle": [
+    {
+     "name": "Uncut sapphire",
+     "id": 1623,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Catherby": [
+    {
+     "name": "Raw tuna",
+     "id": 359,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Civitas illa Fortis": [
+    {
+     "name": "Varlamorian kebab",
+     "id": 29900,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Corsair Cove": [
+    {
+     "name": "Steel scimitar",
+     "id": 1325,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Etceteria": [
+    {
+     "name": "Teak logs",
+     "id": 6333,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Jatizso": [
+    {
+     "name": "Mithril ore",
+     "id": 447,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Land's End": [
+    {
+     "name": "Bird nest (empty)",
+     "id": 5075,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Musa Point": [
+    {
+     "name": "Banana",
+     "id": 1963,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "The Pandemonium": [
+    {
+     "name": "Grog",
+     "id": 1915,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Barnacle blaster",
+     "id": 31255,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Sailor's mirage",
+     "id": 31261,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Vodka",
+     "id": 2015,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Port Khazard": [
+    {
+     "name": "Raw manta ray",
+     "id": 389,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Piscarilius": [
+    {
+     "name": "Raw anglerfish",
+     "id": 13439,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Port Roberts": [
+    {
+     "name": "Steel cannonball",
+     "id": 2,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Port Sarim": [
+    {
+     "name": "Casket",
+     "id": 405,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Red Rock": [
+    {
+     "name": "Elkhorn coral",
+     "id": 31481,
+     "min": 8,
+     "max": 8,
+     "noted": false
+    }
+   ],
+   "Rellekka": [
+    {
+     "name": "Fremennik helm",
+     "id": 3748,
+     "min": 1,
+     "max": 1,
+     "noted": false
+    }
+   ],
+   "Ruins of Unkah": [
+    {
+     "name": "Spirit flakes",
+     "id": 25588,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "The Summer Shore": [
+    {
+     "name": "Elkhorn frag",
+     "id": 31511,
+     "min": 3,
+     "max": 3,
+     "noted": true
+    }
+   ],
+   "Void Knights' Outpost": [
+    {
+     "name": "Steel platebody",
+     "id": 1119,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Deepfin Point": [
+    {
+     "name": "Lead ore",
+     "id": 31716,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Entrana": [
+    {
+     "name": "Babydragon bones",
+     "id": 534,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Hosidius": [
+    {
+     "name": "Compost",
+     "id": 6032,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Lunar Isle": [
+    {
+     "name": "Astral rune",
+     "id": 9075,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Neitiznot": [
+    {
+     "name": "Yak-hide",
+     "id": 10818,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Piscatoris": [
+    {
+     "name": "Raw monkfish",
+     "id": 7944,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Tyras": [
+    {
+     "name": "Zulrah's scales",
+     "id": 12934,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Prifddinas": [
+    {
+     "name": "Crystal shard",
+     "id": 23962,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "Sunset Coast": [
+    {
+     "name": "Bucket of sand",
+     "id": 1783,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ]
+  },
+  "Medium": {
+   "Aldarin": [
+    {
+     "name": "Grapes",
+     "id": 1987,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ],
+   "Ardougne": [
+    {
+     "name": "Cake",
+     "id": 1891,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Brimhaven": [
+    {
+     "name": "Pineapple",
+     "id": 2114,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Catherby": [
+    {
+     "name": "Raw lobster",
+     "id": 377,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Civitas illa Fortis": [
+    {
+     "name": "Varlamorian kebab",
+     "id": 29900,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Corsair Cove": [
+    {
+     "name": "Steel scimitar",
+     "id": 1325,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Deepfin Point": [
+    {
+     "name": "Lead ore",
+     "id": 31716,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Etceteria": [
+    {
+     "name": "Teak logs",
+     "id": 6333,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Jatizso": [
+    {
+     "name": "Mithril ore",
+     "id": 447,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Land's End": [
+    {
+     "name": "Bird nest (empty)",
+     "id": 5075,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Lunar Isle": [
+    {
+     "name": "Astral rune",
+     "id": 9075,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Neitiznot": [
+    {
+     "name": "Yak-hide",
+     "id": 10818,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "The Pandemonium": [
+    {
+     "name": "Grog",
+     "id": 1915,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Barnacle blaster",
+     "id": 31255,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Sailor's mirage",
+     "id": 31261,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Vodka",
+     "id": 2015,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Piscatoris": [
+    {
+     "name": "Raw monkfish",
+     "id": 7944,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Khazard": [
+    {
+     "name": "Raw manta ray",
+     "id": 389,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Piscarilius": [
+    {
+     "name": "Raw anglerfish",
+     "id": 13439,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Port Roberts": [
+    {
+     "name": "Steel cannonball",
+     "id": 2,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Port Sarim": [
+    {
+     "name": "Casket",
+     "id": 405,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Port Tyras": [
+    {
+     "name": "Zulrah's scales",
+     "id": 12934,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Prifddinas": [
+    {
+     "name": "Crystal shard",
+     "id": 23962,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "Red Rock": [
+    {
+     "name": "Pillar coral",
+     "id": 31484,
+     "min": 5,
+     "max": 5,
+     "noted": false
+    }
+   ],
+   "Rellekka": [
+    {
+     "name": "Fremennik helm",
+     "id": 3748,
+     "min": 1,
+     "max": 1,
+     "noted": false
+    }
+   ],
+   "Ruins of Unkah": [
+    {
+     "name": "Spirit flakes",
+     "id": 25588,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "The Summer Shore": [
+    {
+     "name": "Pillar frag",
+     "id": 31513,
+     "min": 2,
+     "max": 2,
+     "noted": false
+    }
+   ],
+   "Sunset Coast": [
+    {
+     "name": "Bucket of sand",
+     "id": 1783,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ],
+   "Void Knights' Outpost": [
+    {
+     "name": "Steel platebody",
+     "id": 1119,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Cairn Isle": [
+    {
+     "name": "Uncut sapphire",
+     "id": 1623,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Entrana": [
+    {
+     "name": "Wyrm bones",
+     "id": 22780,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Hosidius": [
+    {
+     "name": "Supercompost",
+     "id": 6034,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Musa Point": [
+    {
+     "name": "Banana",
+     "id": 1963,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ]
+  },
+  "Large": {
+   "Aldarin": [
+    {
+     "name": "Grapes",
+     "id": 1987,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ],
+   "Ardougne": [
+    {
+     "name": "Cake",
+     "id": 1891,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Brimhaven": [
+    {
+     "name": "Pineapple",
+     "id": 2114,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Catherby": [
+    {
+     "name": "Raw bass",
+     "id": 363,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Civitas illa Fortis": [
+    {
+     "name": "Varlamorian kebab",
+     "id": 29900,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Corsair Cove": [
+    {
+     "name": "Steel scimitar",
+     "id": 1325,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Deepfin Point": [
+    {
+     "name": "Lead ore",
+     "id": 31716,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Etceteria": [
+    {
+     "name": "Teak logs",
+     "id": 6333,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Hosidius": [
+    {
+     "name": "Supercompost",
+     "id": 6034,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Land's End": [
+    {
+     "name": "Bird nest (empty)",
+     "id": 5075,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Lunar Isle": [
+    {
+     "name": "Astral rune",
+     "id": 9075,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Piscatoris": [
+    {
+     "name": "Raw monkfish",
+     "id": 7944,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Piscarilius": [
+    {
+     "name": "Raw anglerfish",
+     "id": 13439,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Port Roberts": [
+    {
+     "name": "Steel cannonball",
+     "id": 2,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Port Sarim": [
+    {
+     "name": "Casket",
+     "id": 405,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Port Tyras": [
+    {
+     "name": "Zulrah's scales",
+     "id": 12934,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Prifddinas": [
+    {
+     "name": "Crystal shard",
+     "id": 23962,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "Red Rock": [
+    {
+     "name": "Pillar coral",
+     "id": 31484,
+     "min": 8,
+     "max": 8,
+     "noted": false
+    }
+   ],
+   "Rellekka": [
+    {
+     "name": "Fremennik helm",
+     "id": 3748,
+     "min": 1,
+     "max": 1,
+     "noted": false
+    }
+   ],
+   "The Summer Shore": [
+    {
+     "name": "Pillar frag",
+     "id": 31513,
+     "min": 3,
+     "max": 3,
+     "noted": false
+    }
+   ],
+   "Sunset Coast": [
+    {
+     "name": "Bucket of sand",
+     "id": 1783,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ],
+   "Void Knights' Outpost": [
+    {
+     "name": "Steel platebody",
+     "id": 1119,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Cairn Isle": [
+    {
+     "name": "Uncut sapphire",
+     "id": 1623,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Entrana": [
+    {
+     "name": "Dragon bones",
+     "id": 536,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Jatizso": [
+    {
+     "name": "Mithril ore",
+     "id": 447,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Musa Point": [
+    {
+     "name": "Banana",
+     "id": 1963,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Neitiznot": [
+    {
+     "name": "Yak-hide",
+     "id": 10818,
+     "min": 20,
+     "max": 20,
+     "noted": true
+    }
+   ],
+   "The Pandemonium": [
+    {
+     "name": "Grog",
+     "id": 1915,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Barnacle blaster",
+     "id": 31255,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Sailor's mirage",
+     "id": 31261,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Vodka",
+     "id": 2015,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Port Khazard": [
+    {
+     "name": "Raw manta ray",
+     "id": 389,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Ruins of Unkah": [
+    {
+     "name": "Spirit flakes",
+     "id": 25588,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ]
+  },
+  "Huge": {
+   "Aldarin": [
+    {
+     "name": "Grapes",
+     "id": 1987,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ],
+   "Ardougne": [
+    {
+     "name": "Cake",
+     "id": 1891,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Deepfin Point": [
+    {
+     "name": "Lead ore",
+     "id": 31716,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Etceteria": [
+    {
+     "name": "Teak logs",
+     "id": 6333,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Lunar Isle": [
+    {
+     "name": "Astral rune",
+     "id": 9075,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Port Roberts": [
+    {
+     "name": "Steel cannonball",
+     "id": 2,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Port Tyras": [
+    {
+     "name": "Zulrah's scales",
+     "id": 12934,
+     "min": 25,
+     "max": 25,
+     "noted": false
+    }
+   ],
+   "Prifddinas": [
+    {
+     "name": "Crystal shard",
+     "id": 23962,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "Red Rock": [
+    {
+     "name": "Umbral coral",
+     "id": 31487,
+     "min": 5,
+     "max": 5,
+     "noted": false
+    }
+   ],
+   "Rellekka": [
+    {
+     "name": "Fremennik helm",
+     "id": 3748,
+     "min": 1,
+     "max": 1,
+     "noted": false
+    }
+   ],
+   "The Summer Shore": [
+    {
+     "name": "Umbral frag",
+     "id": 31515,
+     "min": 2,
+     "max": 2,
+     "noted": false
+    }
+   ],
+   "Void Knights' Outpost": [
+    {
+     "name": "Steel platebody",
+     "id": 1119,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Brimhaven": [
+    {
+     "name": "Pineapple",
+     "id": 2114,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Cairn Isle": [
+    {
+     "name": "Uncut sapphire",
+     "id": 1623,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Catherby": [
+    {
+     "name": "Raw shark",
+     "id": 383,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Civitas illa Fortis": [
+    {
+     "name": "Varlamorian kebab",
+     "id": 29900,
+     "min": 2,
+     "max": 2,
+     "noted": true
+    }
+   ],
+   "Corsair Cove": [
+    {
+     "name": "Steel scimitar",
+     "id": 1325,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Entrana": [
+    {
+     "name": "Dragon bones",
+     "id": 536,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Hosidius": [
+    {
+     "name": "Ultracompost",
+     "id": 21483,
+     "min": 15,
+     "max": 15,
+     "noted": true
+    }
+   ],
+   "Jatizso": [
+    {
+     "name": "Mithril ore",
+     "id": 447,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Land's End": [
+    {
+     "name": "Bird nest (empty)",
+     "id": 5075,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Musa Point": [
+    {
+     "name": "Banana",
+     "id": 1963,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "Neitiznot": [
+    {
+     "name": "Yak-hide",
+     "id": 10818,
+     "min": 25,
+     "max": 25,
+     "noted": true
+    }
+   ],
+   "The Pandemonium": [
+    {
+     "name": "Grog",
+     "id": 1915,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Barnacle blaster",
+     "id": 31255,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Sailor's mirage",
+     "id": 31261,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    },
+    {
+     "name": "Vodka",
+     "id": 2015,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Piscatoris": [
+    {
+     "name": "Raw monkfish",
+     "id": 7944,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Khazard": [
+    {
+     "name": "Raw manta ray",
+     "id": 389,
+     "min": 10,
+     "max": 10,
+     "noted": true
+    }
+   ],
+   "Port Piscarilius": [
+    {
+     "name": "Raw anglerfish",
+     "id": 13439,
+     "min": 5,
+     "max": 5,
+     "noted": true
+    }
+   ],
+   "Port Sarim": [
+    {
+     "name": "Casket",
+     "id": 405,
+     "min": 1,
+     "max": 1,
+     "noted": true
+    }
+   ],
+   "Ruins of Unkah": [
+    {
+     "name": "Spirit flakes",
+     "id": 25588,
+     "min": 10,
+     "max": 10,
+     "noted": false
+    }
+   ],
+   "Sunset Coast": [
+    {
+     "name": "Bucket of sand",
+     "id": 1783,
+     "min": 40,
+     "max": 40,
+     "noted": true
+    }
+   ]
+  }
+ }
+}
