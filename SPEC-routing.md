@@ -122,7 +122,8 @@ Tabled. The user will flag routes that cross dangerous water; a flagged route-gr
 
 - **Expected value per task** = 0.8 × E[coin bag] + 0.2 × E[reward bag] for its size and **destination port**.
   - Reward bags have shared contents for each size, plus the destination port's **signature drops** (for example grapes at Aldarin). The wiki lists the items and quantities (*Tiny/…/Huge port reward bag* and the port table on *Port reward bag*), but **no rates**, so each listed drop is weighted equally.
-  - Items are priced at runtime with live GE prices from RuneLite's `ItemManager`. Untradeables (sawmill coupons) take a value you set, default 0.
+  - Items are valued at their **high-alchemy price**, because the user is an ironman and GE prices mean nothing to them. The price is read at runtime from the item definition (`ItemComposition.getHaPrice()`). Coins count at face value.
+  - Items with no alch value (for example sawmill coupons) take a value you set per item, default 0.
   - The step thresholds make tasks just over a threshold (for example 2,500 XP) noticeably better value than those just under.
 - Wiki sources: *Courier tasks* (revision 15327263), *Port coin bag*, *Port reward bag*, and *Module:CourierTaskLine* (bag thresholds, edited 27 August 2026).
 
