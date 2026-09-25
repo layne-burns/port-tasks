@@ -83,6 +83,39 @@ public final class RoutingService
 		return plan;
 	}
 
+	/** The first port in the plan other than where it started (the next place to sail to), or null. */
+	public PortLocation nextStop()
+	{
+		if (plan == null)
+		{
+			return null;
+		}
+		for (RoutePlanner.Stop s : plan.stops)
+		{
+			if (s.port != planStart)
+			{
+				return s.port;
+			}
+		}
+		return null;
+	}
+
+	/** True if the plan has a pickup or delivery at this port. */
+	public boolean hasWorkAt(PortLocation port)
+	{
+		if (plan != null)
+		{
+			for (RoutePlanner.Stop s : plan.stops)
+			{
+				if (s.port == port)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/** Port where the boat is docked, or null (at sea / unknown). */
 	public PortLocation boatPort()
 	{

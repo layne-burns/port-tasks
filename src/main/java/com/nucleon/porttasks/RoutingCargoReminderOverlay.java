@@ -22,6 +22,7 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 class RoutingCargoReminderOverlay extends Overlay
 {
 	private static final Color TEXT = new Color(255, 200, 0);
+	private static final Color WARNING = new Color(255, 60, 60);
 
 	private final Client client;
 	private final PortTasksPlugin plugin;
@@ -42,13 +43,20 @@ class RoutingCargoReminderOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!config.routingEnabled() || !config.routingCargoReminder())
+		Player player = client.getLocalPlayer();
+		if (!config.routingEnabled() || player == null)
 		{
 			return null;
 		}
+		// Wrong-port warnings (blocked dock, or docked where the plan has nothing) take priority.
+		String warning = plugin.routingOverheadWarning();
+		if (warning != null)
+		{
+			draw(graphics, player, warning, WARNING);
+			return null;
+		}
 		PortLocation port = plugin.routingService.boatPort();
-		Player player = client.getLocalPlayer();
-		if (port == null || player == null)
+		if (!config.routingCargoReminder() || port == null)
 		{
 			return null;
 		}
@@ -68,12 +76,17 @@ class RoutingCargoReminderOverlay extends Overlay
 		{
 			return null;
 		}
+		draw(graphics, player, text, TEXT);
+		return null;
+	}
+
+	private static void draw(Graphics2D graphics, Player player, String text, Color color)
+	{
 		Point loc = player.getCanvasTextLocation(graphics, text, player.getLogicalHeight() + 40);
 		if (loc != null)
 		{
-			OverlayUtil.renderTextLocation(graphics, loc, text, TEXT);
+			OverlayUtil.renderTextLocation(graphics, loc, text, color);
 		}
-		return null;
 	}
 
 	private String cargoName(CourierTaskData d)

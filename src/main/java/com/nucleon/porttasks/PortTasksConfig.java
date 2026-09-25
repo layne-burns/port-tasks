@@ -561,6 +561,18 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "routingBlockWrongDock",
+		name = "Block wrong-port docking",
+		description = "While holding a courier crate in hand: block docking at a port with nothing in your plan (chat + overhead warning), and warn while docked at one. Shift-click docks anyway",
+		section = routing,
+		position = 11
+	)
+	default boolean routingBlockWrongDock()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "routingBagCounts",
 		name = "Bag counts",
 		description = "In the route panel, count the port bags received this session by type and size",

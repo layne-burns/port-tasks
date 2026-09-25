@@ -75,6 +75,21 @@ public final class DepositGuard
 			+ String.join(" / ", elsewhere) + ". Shift-click to deposit anyway.";
 	}
 
+	/** True if the player is holding a crate that belongs to an unfinished courier task. */
+	public boolean holdsCourierCrate(List<CourierTask> tasks)
+	{
+		Set<Integer> held = heldItemIds();
+		for (CourierTask t : tasks)
+		{
+			CourierTaskData d = t.getData();
+			if (t.getDelivered() < d.cargoAmount && held.contains(d.cargo))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private static PortLocation ledgerPort(int objectId)
 	{
 		for (PortLocation p : PortLocation.values())

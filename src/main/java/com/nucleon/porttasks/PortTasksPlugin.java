@@ -34,6 +34,7 @@ import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.DepositGuard;
+import com.nucleon.porttasks.routing.DockGuard;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
 import com.nucleon.porttasks.routing.RoutingService;
@@ -172,6 +173,10 @@ public class PortTasksPlugin extends Plugin
 	RoutingService routingService;
 	BagCounter bagCounter;
 	private DepositGuard depositGuard;
+	private DockGuard dockGuard;
+	/** A short-lived warning to show above the player (e.g. a blocked dock), and the tick it expires. */
+	private String overheadWarning;
+	private int overheadWarningUntil;
 	private final WantedItems wantedItems = new WantedItems();
 	private BoardScorer boardScorer;
 	/** Scores of the last notice board's offered courier tasks, by dbrow (routing extension). */
@@ -384,6 +389,7 @@ public class PortTasksPlugin extends Plugin
 		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
 		bagCounter = new BagCounter(courierWikiData);
 		depositGuard = new DepositGuard(client);
+		dockGuard = new DockGuard(client);
 		wantedItems.parse(config.routingWantedItems());
 		RewardValuer rewardValuer = new RewardValuer(courierWikiData, itemManager, wantedItems);
 		boardScorer = new BoardScorer(routingService.graph(), courierWikiData, xpLearner, rewardValuer, wantedItems, config);
@@ -785,17 +791,63 @@ public class PortTasksPlugin extends Plugin
 	@Subscribe
 	private void onMenuOptionClicked(final MenuOptionClicked event)
 	{
-		if (!config.routingBlockWrongDeposit())
+		if (config.routingBlockWrongDeposit())
 		{
-			return;
+			String reason = depositGuard.check(event.getMenuOption(), event.getId(), courierTasks);
+			if (reason != null)
+			{
+				event.consume();
+				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", reason, null);
+				log.info("[routing] {}", reason);
+				return;
+			}
 		}
-		String reason = depositGuard.check(event.getMenuOption(), event.getId(), courierTasks);
-		if (reason != null)
+		if (config.routingBlockWrongDock() && config.routingEnabled() && carryingCargo()
+			&& dockGuard.isDockClick(event.getMenuOption(), event.getMenuTarget(), event.getId()))
 		{
-			event.consume();
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", reason, null);
-			log.info("[routing] {}", reason);
+			PortLocation wrong = dockGuard.wrongPort(routingService.plan());
+			if (wrong != null)
+			{
+				event.consume();
+				PortLocation next = routingService.nextStop();
+				String nextName = next == null ? "?" : next.getName();
+				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Blocked docking at " + wrong.getName()
+					+ ": nothing in your plan there. Next stop is " + nextName + ". Shift-click to dock anyway.", null);
+				overheadWarning = "Wrong port - next stop: " + nextName;
+				overheadWarningUntil = client.getTickCount() + 8;
+				log.info("[routing] blocked docking at {} (next stop {})", wrong.getName(), nextName);
+			}
 		}
+	}
+
+	/**
+	 * True while the player is holding a courier crate in hand (not merely cargo in the hold). The wrong-port
+	 * guard only applies then: with empty hands, docking anywhere (notice boards, grabbing another task
+	 * mid-route, banking) is fine.
+	 */
+	private boolean carryingCargo()
+	{
+		return depositGuard.holdsCourierCrate(courierTasks);
+	}
+
+	/**
+	 * Routing extension: the warning to show above the player, if any: a recently blocked dock, or (while
+	 * docked with a plan that has no work at this port) a standing wrong-port reminder.
+	 */
+	public String routingOverheadWarning()
+	{
+		if (overheadWarning != null && client.getTickCount() <= overheadWarningUntil)
+		{
+			return overheadWarning;
+		}
+		PortLocation docked = routingService.boatPort();
+		if (config.routingBlockWrongDock() && carryingCargo() && routingService.plan() != null && docked != null
+			&& !routingService.hasWorkAt(docked))
+		{
+			PortLocation next = routingService.nextStop();
+			return "Wrong port - next stop: " + (next == null ? "?" : next.getName());
+		}
+		return null;
 	}
 
 	@SuppressWarnings("unused")
