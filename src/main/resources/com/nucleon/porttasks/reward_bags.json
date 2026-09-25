@@ -2220,5 +2220,627 @@
     }
    ]
   }
+ },
+ "bagItems": {
+  "34377": {
+   "type": "coin",
+   "size": "Tiny"
+  },
+  "34317": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34277": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34077": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34297": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34087": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34117": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34197": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34227": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34257": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34327": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34357": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34347": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34157": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34127": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34207": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34307": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34177": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34337": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34147": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34107": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34167": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34097": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34137": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34367": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34287": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34187": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34267": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34237": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34217": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34247": {
+   "type": "reward",
+   "size": "Tiny"
+  },
+  "34379": {
+   "type": "coin",
+   "size": "Small"
+  },
+  "34209": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34319": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34279": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34079": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34299": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34309": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34179": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34149": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34109": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34199": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34229": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34259": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34329": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34359": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34369": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34349": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34269": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34239": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34159": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34219": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34249": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34339": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34089": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34119": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34169": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34099": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34139": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34289": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34189": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34129": {
+   "type": "reward",
+   "size": "Small"
+  },
+  "34381": {
+   "type": "coin",
+   "size": "Medium"
+  },
+  "34211": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34321": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34281": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34301": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34311": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34181": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34341": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34151": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34111": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34201": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34171": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34101": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34261": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34141": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34331": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34361": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34371": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34351": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34291": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34191": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34271": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34241": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34161": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34221": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34131": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34251": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34081": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34091": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34121": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34231": {
+   "type": "reward",
+   "size": "Medium"
+  },
+  "34383": {
+   "type": "coin",
+   "size": "Large"
+  },
+  "34213": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34323": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34283": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34303": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34313": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34183": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34343": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34153": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34123": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34203": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34173": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34143": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34363": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34373": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34353": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34293": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34193": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34273": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34243": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34223": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34133": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34253": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34083": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34093": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34113": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34233": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34103": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34263": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34333": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34163": {
+   "type": "reward",
+   "size": "Large"
+  },
+  "34385": {
+   "type": "coin",
+   "size": "Huge"
+  },
+  "34215": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34325": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34345": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34155": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34175": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34375": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34295": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34195": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34275": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34245": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34225": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34255": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34285": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34085": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34305": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34315": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34185": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34095": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34125": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34115": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34205": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34235": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34105": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34265": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34145": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34335": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34365": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34355": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34165": {
+   "type": "reward",
+   "size": "Huge"
+  },
+  "34135": {
+   "type": "reward",
+   "size": "Huge"
+  }
  }
 }

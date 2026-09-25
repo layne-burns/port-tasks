@@ -80,6 +80,12 @@ public final class RoutingService
 		return plan;
 	}
 
+	/** Port where the boat is docked, or null (at sea / unknown). */
+	public PortLocation boatPort()
+	{
+		return boats.boatPort();
+	}
+
 	public RouteGraph graph()
 	{
 		return graph;

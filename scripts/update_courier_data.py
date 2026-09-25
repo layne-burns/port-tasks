@@ -68,6 +68,24 @@ def infobox_id(name):
     return int(m.group(1)) if m else None
 
 
+def bag_items(problems):
+    """Item id -> {type: coin|reward, size}. Reward bags have one id per port (30 per size)."""
+    out = {}
+    for size in SIZES:
+        for kind in ("coin", "reward"):
+            page = f"{size} port {kind} bag"
+            q = urllib.parse.urlencode({"action": "parse", "page": page, "prop": "wikitext", "format": "json",
+                                        "formatversion": 2, "redirects": 1})
+            d = get(f"{API}?{q}")
+            text = d.get("parse", {}).get("wikitext", "")
+            ids = [int(x) for m in re.findall(r"\|\s*id\d*\s*=\s*([\d, ]+)", text) for x in m.split(",") if x.strip()]
+            if not ids:
+                problems.append(f"no item ids for {page}")
+            for i in ids:
+                out[str(i)] = {"type": kind, "size": size}
+    return out
+
+
 def courier_tasks(problems):
     text, rev = wikitext("Courier tasks")
     tasks = {}
@@ -138,8 +156,11 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "courier_tasks.json").write_text(json.dumps(
         {"source": {"page": "Courier tasks", "revid": task_rev}, "tasks": tasks}, indent=1), encoding="utf-8")
+    items_by_id = bag_items(problems)
     (OUT / "reward_bags.json").write_text(json.dumps(
-        {"source": {f"{s} port reward bag": r for s, r in bag_revs.items()}, **bags}, indent=1), encoding="utf-8")
+        {"source": {f"{s} port reward bag": r for s, r in bag_revs.items()}, **bags, "bagItems": items_by_id},
+        indent=1), encoding="utf-8")
+    print(f"bag item ids: {len(items_by_id)}")
 
     print(f"courier tasks: {len(tasks)} (wiki rev {task_rev})")
     for size in SIZES:

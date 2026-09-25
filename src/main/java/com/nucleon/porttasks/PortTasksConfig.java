@@ -524,6 +524,42 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "routingNextStopPanel",
+		name = "Next stop panel",
+		description = "Show a small panel with the next stop and what to do there",
+		section = routing,
+		position = 7
+	)
+	default boolean routingNextStopPanel()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingCargoReminder",
+		name = "Cargo reminder",
+		description = "While docked where the plan has a pickup, show above your character which crates still need grabbing",
+		section = routing,
+		position = 8
+	)
+	default boolean routingCargoReminder()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingBagCounts",
+		name = "Bag counts",
+		description = "In the route panel, count the port bags received this session by type and size",
+		section = routing,
+		position = 9
+	)
+	default boolean routingBagCounts()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "routingLegColor",
 		name = "Next leg colour",
 		description = "Colour of the path to the next stop",

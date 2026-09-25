@@ -29,6 +29,7 @@ package com.nucleon.porttasks;
 import com.google.common.base.MoreObjects;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.nucleon.porttasks.routing.BagCounter;
 import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.RewardValuer;
@@ -81,6 +82,8 @@ import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -164,6 +167,11 @@ public class PortTasksPlugin extends Plugin
 	private BoatLocator boatLocator;
 	private XpLearner xpLearner;
 	RoutingService routingService;
+	BagCounter bagCounter;
+	@Inject
+	private RoutingNextStopOverlay routingNextStopOverlay;
+	@Inject
+	private RoutingCargoReminderOverlay routingCargoReminderOverlay;
 	@Getter
 	List<BountyTask> bountyTasks = new ArrayList<>();
 	@Getter
@@ -364,6 +372,7 @@ public class PortTasksPlugin extends Plugin
 
 		CourierWikiData courierWikiData = CourierWikiData.load(gson);
 		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
+		bagCounter = new BagCounter(courierWikiData);
 		routingDiagnostics = new RoutingDiagnostics(client, courierWikiData,
 			new RewardValuer(courierWikiData, itemManager, config), boatLocator, xpLearner);
 
@@ -384,6 +393,8 @@ public class PortTasksPlugin extends Plugin
 
 		loadWidgetTags();
 		overlayManager.add(taskHighlight);
+		overlayManager.add(routingNextStopOverlay);
+		overlayManager.add(routingCargoReminderOverlay);
 
 		migrateConfiguration();
 		tracerConfig.loadConfigs(config);
@@ -430,6 +441,8 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.remove(portTaskCargoOverlay);
 		overlayManager.remove(noticeBoardTooltip);
 		overlayManager.remove(taskHighlight);
+		overlayManager.remove(routingNextStopOverlay);
+		overlayManager.remove(routingCargoReminderOverlay);
 		overlayManager.remove(despawnTimerOverlay);
 	}
 
@@ -734,6 +747,16 @@ public class PortTasksPlugin extends Plugin
 		{
 			handleTaskCompleted();
 			return;
+		}
+	}
+
+	@SuppressWarnings("unused")
+	@Subscribe
+	private void onItemContainerChanged(final ItemContainerChanged event)
+	{
+		if (event.getContainerId() == InventoryID.INV)
+		{
+			bagCounter.onInventoryChanged(event.getItemContainer(), client.getTickCount());
 		}
 	}
 
@@ -1078,6 +1101,7 @@ public class PortTasksPlugin extends Plugin
 						if (value >= task.getData().cargoAmount)
 						{
 							xpLearner.expectCompletion(task.getData().getId(), client.getTickCount());
+							bagCounter.onTaskCompleted(client.getTickCount());
 						}
 						pluginPanel.rebuild();
 						return;

@@ -43,6 +43,13 @@ public final class CourierWikiData
 		public boolean noted;
 	}
 
+	/** A port bag item: coin or reward, and its size. */
+	public static final class BagItem
+	{
+		public String type;
+		public String size;
+	}
+
 	private static final class TasksFile
 	{
 		Map<String, Task> tasks;
@@ -54,6 +61,8 @@ public final class CourierWikiData
 		Map<String, List<Drop>> shared;
 		/** Bag size -> destination port name -> that port's signature drops. */
 		Map<String, Map<String, List<Drop>>> signature;
+		/** Item id -> bag type and size (reward bags have one id per port). */
+		Map<String, BagItem> bagItems;
 	}
 
 	private final Map<String, Task> tasks;
@@ -81,6 +90,7 @@ public final class CourierWikiData
 			BagsFile empty = new BagsFile();
 			empty.shared = Collections.emptyMap();
 			empty.signature = Collections.emptyMap();
+			empty.bagItems = Collections.emptyMap();
 			return new CourierWikiData(Collections.emptyMap(), empty);
 		}
 	}
@@ -103,6 +113,12 @@ public final class CourierWikiData
 	public Task task(int taskId)
 	{
 		return tasks.get(Integer.toString(taskId));
+	}
+
+	/** The bag an item id is, or null if it isn't a port bag. */
+	public BagItem bagItem(int itemId)
+	{
+		return bags.bagItems == null ? null : bags.bagItems.get(Integer.toString(itemId));
 	}
 
 	public List<Drop> sharedDrops(BagSize size)
