@@ -73,9 +73,16 @@ The last one guards against a high marginal ratio on a tiny pick that lowers the
 
 - The **next leg only**: draw the path from `p₀` to the first stop of the optimal route. This replaces Port Tasks' "all paths at once" while planning is on.
 - Re-plan whenever a task is taken, completed or dropped, or crates are picked up or delivered (the varbits change), and on leaving a port.
-- Board scores:
-  - **Side list:** in the Port Tasks panel, every offered task with all the metrics, sorted by the chosen one.
-  - **On the board:** a badge or highlight on each offered task, showing the chosen metric's rank or value, with the best pick highlighted.
+- Board scores (phase 4, agreed 2026-09-25):
+  - Each metric in §2.2 has its own **show in tooltip** toggle, and one setting picks the **ranking** metric.
+  - **Tooltip:** the existing Port Tasks board tooltip gains the enabled metrics, plus the task's **signature drops** (the delivery port's unique items for its bag size), always shown.
+  - **Side list:** in the Port Tasks panel, every offered task with the enabled metrics, sorted by the ranking metric.
+  - **On the board:** a rank badge on each offered task, and the best pick highlighted.
+  - Scoring is per offered task (`S` = one task). Combinations are out of scope for now.
+- **Wanted items:** a settings list, one item per line, with an optional `= value` (for example `Crystal shard = 2000`).
+  - Tasks that can give a listed item are highlighted, and the item is marked in their tooltip.
+  - A given value replaces the item's alch value in the value metrics. This replaces the separate crystal-shard and spirit-flake settings.
+- Leg drawing (phase 3, changed 2026-09-25): the Shortest Path plugin now paths at sea, so by default the next leg is drawn by it. We send the next stop's dock as its target over its PluginMessage API, and only when the next stop changes. Our own drawn-path rendering is the fallback (setting `routingUseShortestPath`).
 
 ## 3. Travel cost `d(u, v)`
 
@@ -135,6 +142,10 @@ Tabled. The user will flag routes that cross dangerous water; a flagged route-gr
   - Items with no alch value (for example sawmill coupons) take a value you set per item, default 0.
   - The step thresholds make tasks just over a threshold (for example 2,500 XP) noticeably better value than those just under.
 - Wiki sources: *Courier tasks* (revision 15327263), *Port coin bag*, *Port reward bag*, and *Module:CourierTaskLine* (bag thresholds, edited 27 August 2026).
+
+## 6a. Later ideas (not in scope yet)
+
+Best combinations of offered tasks; swap suggestions when slots are full; an XP boost (keg) multiplier; splitting value into coins and items; XP/hour once times are learned; "against sweep" explanations; uncertainty markers. Remembering other boards' offers is **dropped**: boards change whenever tasks are handed in.
 
 ## 7. Build phases (each ends with an in-game check by the user)
 

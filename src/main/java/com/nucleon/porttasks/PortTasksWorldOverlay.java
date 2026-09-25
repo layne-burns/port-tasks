@@ -67,8 +67,11 @@ class PortTasksWorldOverlay extends Overlay
 	{
 		if (plugin.routingService.isActive())
 		{
-			WorldLines.drawPathOnWorld(g, client, plugin.routingService.nextLeg(), config.routingLegColor(), 0,
-				plugin.tracerConfig, plugin.getPathDrawDistance(), plugin.getPathDrawDistance());
+			if (plugin.routingService.drawsOwnLeg())
+			{
+				WorldLines.drawPathOnWorld(g, client, plugin.routingService.nextLeg(), config.routingLegColor(), 0,
+					plugin.tracerConfig, plugin.getPathDrawDistance(), plugin.getPathDrawDistance());
+			}
 			return;
 		}
 		for (CourierTask task : plugin.courierTasks)

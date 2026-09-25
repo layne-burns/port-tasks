@@ -512,6 +512,18 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "routingUseShortestPath",
+		name = "Draw with Shortest Path",
+		description = "Let the Shortest Path plugin draw the route to the next stop (it paths at sea). It replaces any Shortest Path target you set yourself",
+		section = routing,
+		position = 1
+	)
+	default boolean routingUseShortestPath()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "routingLegColor",
 		name = "Next leg colour",
 		description = "Colour of the path to the next stop",

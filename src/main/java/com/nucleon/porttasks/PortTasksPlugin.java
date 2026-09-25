@@ -325,7 +325,7 @@ public class PortTasksPlugin extends Plugin
 		log.info("Starting plugin Port Tasks");
 
 		boatLocator = new BoatLocator(client);
-		routingService = new RoutingService(config, boatLocator);
+		routingService = new RoutingService(config, boatLocator, eventBus);
 		clientThread.invokeLater(() ->
 		{
 			if (client.getGameState().getState() < GameState.LOGIN_SCREEN.getState())

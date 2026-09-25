@@ -72,7 +72,10 @@ class PortTasksMapOverlay extends Overlay
 	{
 		if (plugin.routingService.isActive())
 		{
-			WorldLines.createWorldMapLines(g, client, plugin.routingService.nextLeg(), config.routingLegColor());
+			if (plugin.routingService.drawsOwnLeg())
+			{
+				WorldLines.createWorldMapLines(g, client, plugin.routingService.nextLeg(), config.routingLegColor());
+			}
 			return;
 		}
 		for (CourierTask tasks : plugin.courierTasks)
