@@ -62,10 +62,18 @@ class RoutingNextStopOverlay extends OverlayPanel
 					sizes.append(sizes.length() == 0 ? "" : ", ").append(n).append(' ').append(size.wikiName());
 				}
 			}
+			// Total right-aligned so the counts line up by units; the size breakdown goes on its own line.
 			panelComponent.getChildren().add(LineComponent.builder()
-				.left(("coin".equals(type) ? "Coin" : "Reward") + ": " + plugin.bagCounter.total(type))
-				.right(sizes.toString())
+				.left("coin".equals(type) ? "Coin bags" : "Reward bags")
+				.right(Integer.toString(plugin.bagCounter.total(type)))
 				.build());
+			if (sizes.length() > 0)
+			{
+				panelComponent.getChildren().add(LineComponent.builder()
+					.left("  " + sizes)
+					.leftColor(Color.GRAY)
+					.build());
+			}
 		}
 		return true;
 	}
