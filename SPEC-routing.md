@@ -110,6 +110,9 @@ Tabled. The user will flag routes that cross dangerous water; a flagged route-gr
 ## 6. Reward data (checked against the wiki, 2026-09-25)
 
 - **XP isn't in the game's task table**, so it has to come from outside. Port Tasks v1.6.0 (June 2026) hardcodes `TaskReward` for 240 entries (couriers plus bounties), keyed by DB row. The wiki's *Courier tasks* page lists **439** standard courier tasks, keyed by task ID. Many values differ: the smallest by 1–4 XP, some by 10% or more. **Plan:** a script generates `courier_tasks.json` (task ID → level, XP, ports, crate count) from the wiki page; the plugin joins it on `CourierTaskData.id` and falls back to `TaskReward`. The task ID mapping will be verified in game.
+- **Learned XP:** when a task's final crate is delivered, the next Sailing XP gain (within 3 ticks) is recorded as that task's base XP and overrides the wiki value. It's kept in the profile under `routingLearnedXp`. A value more than 15% away from the wiki's is treated as boosted (keg of horizon's lure) and not learned. Tasks the wiki has no XP for are learned outright.
+- **Boat location (confirmed in game):** `SAILING_LAST_PERSONAL_BOAT_BOARDED` gives the boat slot, and `SAILING_BOAT_n_PORT` gives that boat's dock ID. The `SailingDock` table maps the dock ID to a dock row, which is `PortLocation`'s key. Values that aren't docks, such as mooring points, resolve to "unknown".
+- **Phase 1 in-game results (2026-09-25):** three tasks (IDs 339, 340, 328) joined correctly by task ID, with names, ports and crate counts matching. Port Tasks' XP was off by 2–5, and 0 for task 340, where the wiki says 9 605.
 - **Bags (26 August 2026 update):** each courier task gives **one** bag: a coin bag with probability 4/5, a reward bag with probability 1/5. Bounty tasks stopped giving bags on 2 September. The size depends only on the task's **base XP** (before the keg of horizon's lure):
 
 | Size | Base XP | Coins in a coin bag | Mean |

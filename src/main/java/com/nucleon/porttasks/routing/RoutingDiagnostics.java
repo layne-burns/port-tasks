@@ -28,18 +28,23 @@ public final class RoutingDiagnostics
 		VarbitID.SAILING_BOAT_5_PORT, "SAILING_BOAT_5_PORT",
 		VarbitID.SAILING_BOARDED_BOAT_LAST_DOCK, "SAILING_BOARDED_BOAT_LAST_DOCK",
 		VarbitID.SAILING_BOARDED_BOAT_LAST_STANDARD_DOCK, "SAILING_BOARDED_BOAT_LAST_STANDARD_DOCK",
-		VarbitID.SAILING_BOARDED_BOAT_LAST_MOORING_POINT, "SAILING_BOARDED_BOAT_LAST_MOORING_POINT"
+		VarbitID.SAILING_BOARDED_BOAT_LAST_MOORING_POINT, "SAILING_BOARDED_BOAT_LAST_MOORING_POINT",
+		VarbitID.SAILING_LAST_PERSONAL_BOAT_BOARDED, "SAILING_LAST_PERSONAL_BOAT_BOARDED"
 	);
 
 	private final Client client;
 	private final CourierWikiData wiki;
 	private final RewardValuer valuer;
+	private final BoatLocator boats;
+	private final XpLearner xp;
 
-	public RoutingDiagnostics(Client client, CourierWikiData wiki, RewardValuer valuer)
+	public RoutingDiagnostics(Client client, CourierWikiData wiki, RewardValuer valuer, BoatLocator boats, XpLearner xp)
 	{
+		this.xp = xp;
 		this.client = client;
 		this.wiki = wiki;
 		this.valuer = valuer;
+		this.boats = boats;
 	}
 
 	public void logTask(int slot, CourierTaskData d)
@@ -55,21 +60,24 @@ public final class RoutingDiagnostics
 		boolean namesMatch = w.name != null && w.name.equalsIgnoreCase(d.taskName);
 		boolean portsMatch = w.cargoPort.equals(d.getCargoLocation().getName())
 			&& w.destination.equals(d.getDeliveryLocation().getName());
-		String value = w.xp == null ? "?" : String.format("%.0f", valuer.expectedTaskValue(w.xp, w.destination));
+		Integer baseXp = xp.xp(d.getId());
+		String value = baseXp == null ? "?" : String.format("%.0f", valuer.expectedTaskValue(baseXp, w.destination));
 		log.info("[routing] slot {} task id {} (dbrow {}): plugin '{}' / wiki '{}' names {} | {} -> {} ports {} | "
-				+ "crates plugin {} wiki {} | XP plugin {} wiki {} | bag {} | expected value {} gp",
+				+ "crates plugin {} wiki {} | XP plugin {} wiki {} used {} | bag {} | expected value {} gp",
 			slot, d.getId(), d.getDbrow(), d.taskName, w.name, namesMatch ? "match" : "DIFFER",
 			w.cargoPort, w.destination, portsMatch ? "match" : "DIFFER (plugin " + d.getCargoLocation() + " -> " + d.getDeliveryLocation() + ")",
-			d.cargoAmount, w.crates, pluginXp, w.xp, w.xp == null ? "?" : BagSize.forXp(w.xp).wikiName(), value);
+			d.cargoAmount, w.crates, pluginXp, w.xp, baseXp, baseXp == null ? "?" : BagSize.forXp(baseXp).wikiName(), value);
 	}
 
 	public void logBoatVarbit(int varbitId, int value)
 	{
 		String name = BOAT_VARBITS.get(varbitId);
 		PortLocation near = nearestPort();
-		PortLocation byDbrow = PortLocation.fromDbRow(value);
-		log.info("[routing] {} = {} (as port dbrow: {}) | player nearest port: {}",
-			name, value, byDbrow == PortLocation.EMPTY ? "none" : byDbrow.getName(), near == null ? "?" : near.getName());
+		PortLocation asDock = boats.portForDockId(value);
+		PortLocation boat = boats.boatPort();
+		log.info("[routing] {} = {} (as dock id: {}) | boat slot {} at {} | player nearest port: {}",
+			name, value, asDock == null ? "none" : asDock.getName(), boats.currentBoatSlot(),
+			boat == null ? "?" : boat.getName(), near == null ? "?" : near.getName());
 	}
 
 	/** Every candidate varbit's current value, e.g. at login. */

@@ -29,9 +29,11 @@ package com.nucleon.porttasks;
 import com.google.common.base.MoreObjects;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
+import com.nucleon.porttasks.routing.XpLearner;
 import com.google.inject.Provides;
 import com.nucleon.porttasks.enums.BountyTaskData;
 import com.nucleon.porttasks.enums.PortLocation;
@@ -158,6 +160,8 @@ public class PortTasksPlugin extends Plugin
 	List<CourierTask> courierTasks = new ArrayList<>();
 	// Routing extension (SPEC-routing.md).
 	private RoutingDiagnostics routingDiagnostics;
+	private BoatLocator boatLocator;
+	private XpLearner xpLearner;
 	@Getter
 	List<BountyTask> bountyTasks = new ArrayList<>();
 	@Getter
@@ -318,6 +322,7 @@ public class PortTasksPlugin extends Plugin
 	{
 		log.info("Starting plugin Port Tasks");
 
+		boatLocator = new BoatLocator(client);
 		clientThread.invokeLater(() ->
 		{
 			if (client.getGameState().getState() < GameState.LOGIN_SCREEN.getState())
@@ -342,11 +347,22 @@ public class PortTasksPlugin extends Plugin
 			{
 				log.warn("Failed to load bounty task data", e);
 			}
+
+			try
+			{
+				boatLocator.load();
+			}
+			catch (Exception e)
+			{
+				log.warn("Failed to load sailing dock data", e);
+			}
 			return true;
 		});
 
 		CourierWikiData courierWikiData = CourierWikiData.load(gson);
-		routingDiagnostics = new RoutingDiagnostics(client, courierWikiData, new RewardValuer(courierWikiData, itemManager, config));
+		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
+		routingDiagnostics = new RoutingDiagnostics(client, courierWikiData,
+			new RewardValuer(courierWikiData, itemManager, config), boatLocator, xpLearner);
 
 		pluginPanel = new PortTasksPluginPanel(this, clientThread, itemManager, client, config);
 
@@ -682,6 +698,7 @@ public class PortTasksPlugin extends Plugin
 		{
 			return;
 		}
+		xpLearner.onSailingXp(event.getXp(), client.getTickCount());
 		final int sailingLevel = client.getRealSkillLevel(Skill.SAILING);
 		if (sailingLevel != this.sailingLevel)
 		{
@@ -1037,6 +1054,10 @@ public class PortTasksPlugin extends Plugin
 					if (task.getSlot() == slot)
 					{
 						task.setDelivered(value);
+						if (value >= task.getData().cargoAmount)
+						{
+							xpLearner.expectCompletion(task.getData().getId(), client.getTickCount());
+						}
 						pluginPanel.rebuild();
 						return;
 					}
