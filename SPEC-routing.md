@@ -83,6 +83,8 @@ No available plugin does sea pathfinding. As of 2026-09-24, Shortest Path says i
 
 1. **v1, port-path graph.** Port Tasks' 164 hand-drawn `PortPaths` (sequences of relative moves) become weighted edges between ports, weighted by path length in tiles. All-pairs shortest paths (Floyd–Warshall over about 30 ports) then give `d` for any pair. The next leg is drawn by concatenating the underlying hand-drawn paths.
 2. **v2, learned times.** Record real sailing times between ports during play, and replace or calibrate tile lengths with measured seconds (averaged per pair). Also measure the stop overhead `s`.
+   Phase 2 result (2026-09-25): all 18 western ports are connected, and the unit tests check symmetry, the triangle inequality, that no route is longer than a drawn path, and that each route's paths add up to its distance.
+   - Known weakness: pairs with no drawn path between them get routed through other ports. For example, Neitiznot ↔ Jatizso comes out at 598 tiles via Rellekka, though the islands are neighbours. v2's learned times fix these.
 3. **v3, only if needed.** A real sea pathfinder over water tiles, which needs the boat's size and turning behaviour.
 
 `p₀` at sea: use the nearest point on any port path, or the distance to the nearest port plus that port's `d`.
@@ -95,6 +97,7 @@ Western ports only:
 - Prifddinas (needs Song of the Elves, so check it's unlocked)
 - Land's End, Hosidius, Port Piscarilius, Piscatoris
 - Rellekka, Lunar Isle, Jatizso, Neitiznot, Etceteria
+- Red Rock (added 2026-09-25: newer, and well levelled)
 
 The region is a set of ports, so it can be widened later. Tasks with any port outside it are shown as out of region, not planned. The user has Sailing level 92, so every port is unlocked except those behind Song of the Elves.
 
