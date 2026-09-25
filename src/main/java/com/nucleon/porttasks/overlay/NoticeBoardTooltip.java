@@ -2,9 +2,11 @@ package com.nucleon.porttasks.overlay;
 
 import com.nucleon.porttasks.CourierTaskData;
 import com.nucleon.porttasks.OfferedTaskData;
+import com.nucleon.porttasks.PortTasksConfig;
 import com.nucleon.porttasks.PortTasksPlugin;
 import com.nucleon.porttasks.enums.BountyTaskData;
 import com.nucleon.porttasks.enums.TaskReward;
+import com.nucleon.porttasks.routing.BoardScorer;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
@@ -94,14 +96,14 @@ public class NoticeBoardTooltip extends Overlay
 				data.getCargoLocation(),
 				endTag,
 				data.getDeliveryLocation(),
-				TaskReward.getRewardForTask(data.getDbrow()),
+				courierXp(data),
 				distance,
 				xpColorTag,
 				xpPerTilePercent,
 				endTag,
 				data.getCargoAmount()
 			);
-			tooltipManager.add(new Tooltip(tooltip));
+			tooltipManager.add(new Tooltip(tooltip + routingLines(data)));
 		}
 		if (task instanceof BountyTaskData)
 		{
@@ -117,6 +119,60 @@ public class NoticeBoardTooltip extends Overlay
 			tooltipManager.add(new Tooltip(tooltip));
 		}
 		return null;
+	}
+
+	/** Routing extension: XP learned from play, else the wiki's, else Port Tasks' own table. */
+	private String courierXp(CourierTaskData data)
+	{
+		Integer xp = plugin.taskXp(data.getId());
+		return xp != null ? String.format("%,d", xp) : TaskReward.getRewardForTask(data.getDbrow());
+	}
+
+	/** Routing extension (SPEC-routing.md §2.3): the enabled board metrics, signature drops and wanted items. */
+	private String routingLines(CourierTaskData data)
+	{
+		PortTasksConfig config = plugin.routingConfig();
+		BoardScorer.Score s = plugin.boardScore(data.getDbrow());
+		if (!config.routingEnabled() || s == null)
+		{
+			return "";
+		}
+		StringBuilder sb = new StringBuilder("<br>").append(toColTag(config.routingLegColor()))
+			.append("Rank #").append(s.rank).append(" by ").append(config.routingRankBy()).append("</col>");
+		if (config.routingShowAdded())
+		{
+			sb.append(String.format("<br>Adds: %+.0f tiles, %+d stop%s", s.addedTiles, s.addedStops, Math.abs(s.addedStops) == 1 ? "" : "s"));
+		}
+		if (config.routingShowXpPerTile())
+		{
+			sb.append(String.format("<br>XP / added tile: %.2f", s.xpPerAddedTile));
+		}
+		if (config.routingShowValuePerTile())
+		{
+			sb.append(String.format("<br>Value / added tile: %.0f gp", s.valuePerAddedTile));
+		}
+		if (config.routingShowRouteFit())
+		{
+			sb.append(String.format("<br>Route fit: %.0f%% new sailing", s.routeFit * 100));
+		}
+		if (config.routingShowPlanRate())
+		{
+			sb.append(String.format("<br>Plan rate after: %.2f xp/tile", s.planRateAfter));
+		}
+		if (config.routingShowBag() && s.bag != null)
+		{
+			sb.append(String.format("<br>Bag: %s, ~%,.0f gp expected", s.bag.wikiName(), s.expectedValue));
+		}
+		if (config.routingShowDrops() && !s.signatureDrops.isEmpty())
+		{
+			sb.append("<br>Drops: ").append(String.join(", ", s.signatureDrops));
+		}
+		if (!s.wantedDrops.isEmpty())
+		{
+			sb.append("<br>").append(toColTag(config.routingWantedColor())).append("Wanted: ")
+				.append(String.join(", ", s.wantedDrops)).append("</col>");
+		}
+		return sb.toString();
 	}
 
 	private static String toColTag(Color c)

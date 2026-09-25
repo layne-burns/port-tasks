@@ -1,6 +1,5 @@
 package com.nucleon.porttasks.routing;
 
-import com.nucleon.porttasks.PortTasksConfig;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,8 +7,8 @@ import net.runelite.client.game.ItemManager;
 
 /**
  * Expected value of a courier task's bag (SPEC-routing.md §6), for an ironman: items count at their
- * high-alchemy value, read from the game's item definitions. Items without one are valued as the user chose:
- * sawmill coupons at the sawmill fee they save, crystal shards and spirit flakes from config.
+ * high-alchemy value, read from the game's item definitions. A value the user gave in their wanted-items list
+ * wins over everything; sawmill coupons count at the sawmill fee they save.
  *
  * The wiki lists what each bag can contain but not how likely each item is, so every listed drop is
  * weighted equally. Must be called on the client thread (item definitions).
@@ -25,19 +24,17 @@ public final class RewardValuer
 		34072, 2_500,  // Sawmill coupon (camphor plank)
 		34074, 5_000   // Sawmill coupon (ironwood plank)
 	);
-	private static final int CRYSTAL_SHARD = 23962;
-	private static final int SPIRIT_FLAKES = 25588;
 
 	private final CourierWikiData data;
 	private final ItemManager itemManager;
-	private final PortTasksConfig config;
+	private final WantedItems wanted;
 	private final Map<Integer, Integer> alchCache = new HashMap<>();
 
-	public RewardValuer(CourierWikiData data, ItemManager itemManager, PortTasksConfig config)
+	public RewardValuer(CourierWikiData data, ItemManager itemManager, WantedItems wanted)
 	{
 		this.data = data;
 		this.itemManager = itemManager;
-		this.config = config;
+		this.wanted = wanted;
 	}
 
 	/** Value of one unit of an item, in coins. */
@@ -51,14 +48,6 @@ public final class RewardValuer
 		if (coupon != null)
 		{
 			return coupon;
-		}
-		if (itemId == CRYSTAL_SHARD)
-		{
-			return config.routingCrystalShardValue();
-		}
-		if (itemId == SPIRIT_FLAKES)
-		{
-			return config.routingSpiritFlakeValue();
 		}
 		return alchCache.computeIfAbsent(itemId, id -> itemManager.getItemComposition(id).getHaPrice());
 	}
@@ -95,6 +84,7 @@ public final class RewardValuer
 
 	private double dropValue(CourierWikiData.Drop d)
 	{
-		return unitValue(d.id) * (d.min + d.max) / 2.0;
+		Integer own = wanted.valueOf(d.name);
+		return (own != null ? own : unitValue(d.id)) * (d.min + d.max) / 2.0;
 	}
 }

@@ -70,6 +70,8 @@ public class PortTasksPluginPanel extends PluginPanel
 		public final PortTasksPlugin plugin;
 		private final PortTasksConfig config;
 		private final JPanel markerView = new JPanel();
+		// Routing extension: the last notice board's offered tasks, ranked.
+		private final JPanel boardView = new JPanel();
 		private ClientThread clientThread;
 		private ItemManager itemManager;
 		private Client client;
@@ -122,6 +124,10 @@ public class PortTasksPluginPanel extends PluginPanel
 			markerView.add(errorPanel);
 
 			centerPanel.add(markerView, BorderLayout.NORTH);
+
+			boardView.setLayout(new BoxLayout(boardView, BoxLayout.Y_AXIS));
+			boardView.setBackground(ColorScheme.DARK_GRAY_COLOR);
+			centerPanel.add(boardView, BorderLayout.CENTER);
 
 			// setup panels border layout
 			add(northPanel, BorderLayout.NORTH);
@@ -185,6 +191,33 @@ public class PortTasksPluginPanel extends PluginPanel
 			}
 			repaint();
 			revalidate();
+		}
+
+		/**
+		 * Routing extension: shows the offered tasks of the last notice board, ranked, with the ranking
+		 * metric's value. Swing thread only.
+		 */
+		public void showBoard(String boardName, String metricName, List<String[]> rows)
+		{
+			boardView.removeAll();
+			if (!rows.isEmpty())
+			{
+				JLabel header = new JLabel(boardName + " board, by " + metricName);
+				header.setForeground(Color.WHITE);
+				header.setBorder(new EmptyBorder(8, 0, 4, 0));
+				boardView.add(header);
+				for (String[] row : rows)
+				{
+					// row: rank, name, metric value, wanted marker ("" or item names)
+					JLabel line = new JLabel("<html>#" + row[0] + " " + row[1] + " <font color='#9a9a9a'>" + row[2] + "</font>"
+						+ (row[3].isEmpty() ? "" : " <font color='#ffc800'>★ " + row[3] + "</font>") + "</html>");
+					line.setForeground("1".equals(row[0]) ? new Color(0, 220, 255) : Color.LIGHT_GRAY);
+					line.setBorder(new EmptyBorder(1, 0, 1, 0));
+					boardView.add(line);
+				}
+			}
+			boardView.revalidate();
+			boardView.repaint();
 		}
 
 		public void updateBountyPanel(BountyTask task) // avoid rebuilding the entire JPanel lol

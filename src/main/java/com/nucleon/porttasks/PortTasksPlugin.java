@@ -30,11 +30,13 @@ import com.google.common.base.MoreObjects;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.nucleon.porttasks.routing.BagCounter;
+import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
 import com.nucleon.porttasks.routing.RoutingService;
+import com.nucleon.porttasks.routing.WantedItems;
 import com.nucleon.porttasks.routing.XpLearner;
 import com.google.inject.Provides;
 import com.nucleon.porttasks.enums.BountyTaskData;
@@ -168,10 +170,16 @@ public class PortTasksPlugin extends Plugin
 	private XpLearner xpLearner;
 	RoutingService routingService;
 	BagCounter bagCounter;
+	private final WantedItems wantedItems = new WantedItems();
+	private BoardScorer boardScorer;
+	/** Scores of the last notice board's offered courier tasks, by dbrow (routing extension). */
+	private volatile Map<Integer, BoardScorer.Score> boardScores = new HashMap<>();
 	@Inject
 	private RoutingNextStopOverlay routingNextStopOverlay;
 	@Inject
 	private RoutingCargoReminderOverlay routingCargoReminderOverlay;
+	@Inject
+	private RoutingBoardOverlay routingBoardOverlay;
 	@Getter
 	List<BountyTask> bountyTasks = new ArrayList<>();
 	@Getter
@@ -373,8 +381,10 @@ public class PortTasksPlugin extends Plugin
 		CourierWikiData courierWikiData = CourierWikiData.load(gson);
 		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
 		bagCounter = new BagCounter(courierWikiData);
-		routingDiagnostics = new RoutingDiagnostics(client, courierWikiData,
-			new RewardValuer(courierWikiData, itemManager, config), boatLocator, xpLearner);
+		wantedItems.parse(config.routingWantedItems());
+		RewardValuer rewardValuer = new RewardValuer(courierWikiData, itemManager, wantedItems);
+		boardScorer = new BoardScorer(routingService.graph(), courierWikiData, xpLearner, rewardValuer, wantedItems, config);
+		routingDiagnostics = new RoutingDiagnostics(client, courierWikiData, rewardValuer, boatLocator, xpLearner);
 
 		pluginPanel = new PortTasksPluginPanel(this, clientThread, itemManager, client, config);
 
@@ -395,6 +405,7 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.add(taskHighlight);
 		overlayManager.add(routingNextStopOverlay);
 		overlayManager.add(routingCargoReminderOverlay);
+		overlayManager.add(routingBoardOverlay);
 
 		migrateConfiguration();
 		tracerConfig.loadConfigs(config);
@@ -443,6 +454,7 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.remove(taskHighlight);
 		overlayManager.remove(routingNextStopOverlay);
 		overlayManager.remove(routingCargoReminderOverlay);
+		overlayManager.remove(routingBoardOverlay);
 		overlayManager.remove(despawnTimerOverlay);
 	}
 
@@ -454,7 +466,18 @@ public class PortTasksPlugin extends Plugin
 			return;
 		if (event.getKey().startsWith("routing"))
 		{
-			clientThread.invokeLater(() -> routingService.replan(courierTasks));
+			if ("routingWantedItems".equals(event.getKey()))
+			{
+				wantedItems.parse(config.routingWantedItems());
+			}
+			clientThread.invokeLater(() ->
+			{
+				routingService.replan(courierTasks);
+				if (!offeredTasks.isEmpty())
+				{
+					rescoreBoard();
+				}
+			});
 		}
 		switch (event.getKey())
 		{
@@ -564,6 +587,10 @@ public class PortTasksPlugin extends Plugin
 			int value = event.getValue();
 			handlePortTaskTrigger(varbit, value);
 			routingService.replan(courierTasks);
+			if (!offeredTasks.isEmpty())
+			{
+				rescoreBoard();
+			}
 		}
 		else if (varbitId == VarbitID.SAILING_BOAT_FACILITY_LOCKEDIN)
 		{
@@ -1016,6 +1043,75 @@ public class PortTasksPlugin extends Plugin
 
 			offeredTasks.put(dbrow, new OfferedTaskData(child, levelRequired));
 		}
+		rescoreBoard();
+	}
+
+	/**
+	 * Routing extension: scores the offered courier tasks against the held ones (SPEC-routing.md §2.2) and
+	 * updates the side list. Starts from the boat's dock, or the board's port if the boat's is unknown.
+	 */
+	private void rescoreBoard()
+	{
+		List<CourierTaskData> offered = new ArrayList<>();
+		for (Integer dbrow : offeredTasks.keySet())
+		{
+			CourierTaskData d = CourierTaskData.getByDbrow(dbrow);
+			if (d != null)
+			{
+				offered.add(d);
+			}
+		}
+		if (offered.isEmpty())
+		{
+			boardScores = new HashMap<>();
+			return;
+		}
+		PortLocation board = offered.get(0).getNoticeBoard();
+		PortLocation start = routingService.boatPort() != null ? routingService.boatPort() : board;
+		List<BoardScorer.Score> ranked = boardScorer.score(courierTasks, start, offered);
+		Map<Integer, BoardScorer.Score> byDbrow = new HashMap<>();
+		List<String[]> rows = new ArrayList<>();
+		BoardScorer.RankBy by = config.routingRankBy();
+		for (BoardScorer.Score s : ranked)
+		{
+			byDbrow.put(s.dbrow, s);
+			rows.add(new String[]{Integer.toString(s.rank), s.name, rankValue(s, by), String.join(", ", s.wantedDrops)});
+		}
+		boardScores = byDbrow;
+		String boardName = board.getName();
+		SwingUtilities.invokeLater(() -> pluginPanel.showBoard(boardName, by.toString(), rows));
+	}
+
+	private static String rankValue(BoardScorer.Score s, BoardScorer.RankBy by)
+	{
+		switch (by)
+		{
+			case VALUE_PER_ADDED_TILE:
+				return String.format("%.0f gp/tile", s.valuePerAddedTile);
+			case ROUTE_FIT:
+				return String.format("%.0f%% new", s.routeFit * 100);
+			case PLAN_RATE_AFTER:
+				return String.format("%.2f xp/tile", s.planRateAfter);
+			default:
+				return String.format("%.2f xp/tile", s.xpPerAddedTile);
+		}
+	}
+
+	/** Routing extension: the score of an offered task on the last board, or null. */
+	public BoardScorer.Score boardScore(int dbrow)
+	{
+		return boardScores.get(dbrow);
+	}
+
+	/** Routing extension: base XP for a task (learned from play, else the wiki), or null. */
+	public Integer taskXp(int taskId)
+	{
+		return xpLearner.xp(taskId);
+	}
+
+	public PortTasksConfig routingConfig()
+	{
+		return config;
 	}
 
 	public Integer getDbrowFromWidget(Widget widget)

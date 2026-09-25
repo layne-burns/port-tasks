@@ -26,6 +26,7 @@
  */
 package com.nucleon.porttasks;
 
+import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.RouteEnd;
 import java.awt.Color;
 import net.runelite.client.config.Config;
@@ -572,27 +573,90 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "routingCrystalShardValue",
-		name = "Crystal shard value",
-		description = "Crystal shards can't be alched; what one is worth to you, in coins",
+		keyName = "routingRankBy",
+		name = "Rank board tasks by",
+		description = "Which metric ranks the tasks on a notice board (badges, highlight, side list)",
 		section = routing,
-		position = 1
+		position = 20
 	)
-	default int routingCrystalShardValue()
+	default BoardScorer.RankBy routingRankBy()
 	{
-		return 0;
+		return BoardScorer.RankBy.XP_PER_ADDED_TILE;
+	}
+
+	@ConfigItem(keyName = "routingShowAdded", name = "Show added tiles/stops", description = "Board tooltip: how much sailing and how many stops the task adds",
+		section = routing, position = 21)
+	default boolean routingShowAdded()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowXpPerTile", name = "Show XP per added tile", description = "Board tooltip: XP divided by the added cost",
+		section = routing, position = 22)
+	default boolean routingShowXpPerTile()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowValuePerTile", name = "Show value per added tile", description = "Board tooltip: expected bag value divided by the added cost",
+		section = routing, position = 23)
+	default boolean routingShowValuePerTile()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowRouteFit", name = "Show route fit", description = "Board tooltip: added cost as a share of doing the task on its own (0% = free ride)",
+		section = routing, position = 24)
+	default boolean routingShowRouteFit()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowPlanRate", name = "Show plan rate after", description = "Board tooltip: XP per tile of the whole plan if you take this task",
+		section = routing, position = 25)
+	default boolean routingShowPlanRate()
+	{
+		return false;
+	}
+
+	@ConfigItem(keyName = "routingShowBag", name = "Show bag", description = "Board tooltip: bag size and expected value",
+		section = routing, position = 26)
+	default boolean routingShowBag()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowDrops", name = "Show signature drops", description = "Board tooltip: the delivery port's special reward-bag items for this bag size",
+		section = routing, position = 27)
+	default boolean routingShowDrops()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBoardBadges", name = "Board rank badges", description = "Show each offered task's rank on the board and highlight the best",
+		section = routing, position = 28)
+	default boolean routingBoardBadges()
+	{
+		return true;
 	}
 
 	@ConfigItem(
-		keyName = "routingSpiritFlakeValue",
-		name = "Spirit flake value",
-		description = "Spirit flakes can't be alched. Each gives a 50% chance of an extra fish, so about half a fish's value",
+		keyName = "routingWantedItems",
+		name = "Wanted items",
+		description = "One item per line, optionally '= value' in coins (e.g. Crystal shard = 2000). Tasks that can give one are highlighted; a value replaces the item's alch value",
 		section = routing,
-		position = 2
+		position = 29
 	)
-	default int routingSpiritFlakeValue()
+	default String routingWantedItems()
 	{
-		return 0;
+		return "";
+	}
+
+	@ConfigItem(keyName = "routingWantedColor", name = "Wanted item colour", description = "Highlight for tasks that can give a wanted item",
+		section = routing, position = 30)
+	default Color routingWantedColor()
+	{
+		return new Color(255, 200, 0);
 	}
 
 	enum Overlay
