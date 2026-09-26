@@ -23,6 +23,8 @@ import net.runelite.client.events.PluginMessage;
  * The plan uses our port graph (it needs a cost for every pair of ports), but the leg itself can be drawn by
  * the Shortest Path plugin, which paths at sea: we send it the next stop's dock as its target over its
  * PluginMessage API ("shortestpath" / "path", "clear") and it draws the route from wherever the player is.
+ * It doesn't really model sailing (its sea tiles are just open tiles, joined to the land), so each leg is
+ * sent with transports switched off and with a sea tile for docks whose own tile is blocked.
  */
 @Slf4j
 public final class RoutingService
@@ -36,6 +38,38 @@ public final class RoutingService
 		PortLocation.RED_ROCK));
 
 	private static final String SHORTEST_PATH = "shortestpath";
+
+	/**
+	 * Docks whose navigation tile is blocked in Shortest Path's collision map, mapped to the nearest open sea
+	 * tile. At a blocked tile Shortest Path can't finish at sea and goes for the nearest tile it can reach,
+	 * which at the Summer Shore meant a bank trip for a dramen staff and fairy ring CJQ onto the island.
+	 * Found by flood-filling its collision map (upstream, 24 September 2026); every other port's tile is open.
+	 */
+	private static final Map<PortLocation, WorldPoint> SHORTEST_PATH_DOCK = Collections.singletonMap(
+		PortLocation.SUMMER_SHORE, new WorldPoint(3174, 2365, 0));
+
+	/**
+	 * Shortest Path settings for a sailing leg: no transports, teleports or bank detours, only the sea. Its
+	 * collision map joins the sea to the land, so otherwise a teleport near the destination can beat sailing.
+	 * Shortest Path drops these on "clear".
+	 */
+	private static final Map<String, Object> SHORTEST_PATH_SAILING;
+
+	static
+	{
+		Map<String, Object> m = new HashMap<>();
+		for (String key : new String[]{"useAgilityShortcuts", "useGrappleShortcuts", "useBoats", "useCanoes",
+			"useCharterShips", "useShips", "useFairyRings", "useGnomeGliders", "useHotAirBalloons", "useMagicCarpets",
+			"useMagicMushtrees", "useMinecarts", "useQuetzals", "useSpiritTrees",
+			"useTeleportationLevers", "useTeleportationPortals", "useTeleportationSpells", "useTeleportationSpellsHome",
+			"useTeleportationMinigames", "useWildernessObelisks", "useSeasonalTransports", "includeBankPath", "usePoh"})
+		{
+			m.put(key, false);
+		}
+		// Not a boolean in Shortest Path: it takes the setting's label.
+		m.put("useTeleportationItems", "None");
+		SHORTEST_PATH_SAILING = Collections.unmodifiableMap(m);
+	}
 
 	private final PortTasksConfig config;
 	private final BoatLocator boats;
@@ -251,12 +285,18 @@ public final class RoutingService
 		else
 		{
 			Map<String, Object> data = new HashMap<>();
-			data.put("start", start.getNavigationLocation());
-			data.put("target", target.getNavigationLocation());
+			data.put("start", shortestPathDock(start));
+			data.put("target", shortestPathDock(target));
+			data.put("config", SHORTEST_PATH_SAILING);
 			eventBus.post(new PluginMessage(SHORTEST_PATH, "path", data));
 		}
 		log.info("[routing] Shortest Path leg: {} -> {}", start, target);
 		shortestPathStart = start;
 		shortestPathTarget = target;
+	}
+
+	private static WorldPoint shortestPathDock(PortLocation port)
+	{
+		return SHORTEST_PATH_DOCK.getOrDefault(port, port.getNavigationLocation());
 	}
 }
