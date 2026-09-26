@@ -113,7 +113,7 @@ public class TaskHighlight extends Overlay
 				renderWidgetHider(graphics, widget, Color.BLACK, plugin.getNoticeBoardHideOpactity());
 				continue;
 			}
-			if (plugin.isNoticeBoardHideCourier() && isCourier)
+			if (isCourier && (plugin.isNoticeBoardHideCourier() || plugin.bagFilterHides(courier)))
 			{
 				renderWidgetHider(graphics, widget, Color.BLACK, plugin.getNoticeBoardHideOpactity());
 				continue;

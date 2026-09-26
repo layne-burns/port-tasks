@@ -49,6 +49,7 @@ import net.runelite.client.util.ImageUtil;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JCheckBox;
 import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -72,6 +73,8 @@ public class PortTasksPluginPanel extends PluginPanel
 		private final JPanel markerView = new JPanel();
 		// Routing extension: the last notice board's offered tasks, ranked.
 		private final JPanel boardView = new JPanel();
+		// Routing extension: mirrors the "Only Large/Huge bag tasks" config toggle.
+		private final JCheckBox onlyBigBags = new JCheckBox("Only Large/Huge bag tasks");
 		private ClientThread clientThread;
 		private ItemManager itemManager;
 		private Client client;
@@ -114,6 +117,12 @@ public class PortTasksPluginPanel extends PluginPanel
 			titlePanel.add(title, BorderLayout.WEST);
 			titlePanel.add(markerButtons, BorderLayout.EAST);
 			northPanel.add(titlePanel, BorderLayout.NORTH);
+
+			onlyBigBags.setSelected(config.routingOnlyBigBags());
+			onlyBigBags.setToolTipText("Dim board tasks whose bag would be smaller than Large and leave them out of the ranking");
+			onlyBigBags.setFocusable(false);
+			onlyBigBags.addActionListener(e -> plugin.setOnlyBigBags(onlyBigBags.isSelected()));
+			northPanel.add(onlyBigBags, BorderLayout.SOUTH);
 
 			// marker view panels, these are dynamically added in rebuild()
 			JPanel centerPanel = new JPanel(new BorderLayout());
@@ -218,6 +227,12 @@ public class PortTasksPluginPanel extends PluginPanel
 			}
 			boardView.revalidate();
 			boardView.repaint();
+		}
+
+		/** Routing extension: keeps the checkbox in step when the toggle is changed in the config. Swing thread only. */
+		public void setOnlyBigBags(boolean on)
+		{
+			onlyBigBags.setSelected(on);
 		}
 
 		public void updateBountyPanel(BountyTask task) // avoid rebuilding the entire JPanel lol

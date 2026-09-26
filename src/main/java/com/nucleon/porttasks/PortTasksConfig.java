@@ -621,6 +621,19 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "routingOnlyBigBags",
+		name = "Only Large/Huge bag tasks",
+		description = "Dim courier tasks on a notice board whose bag would be smaller than Large, and leave them out of the ranking."
+			+ " Bag size follows from the task's base XP; whether it's a coin or reward bag is random (1 in 5 is a reward bag). Also in the side panel.",
+		section = routing,
+		position = 19
+	)
+	default boolean routingOnlyBigBags()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "routingRankBy",
 		name = "Rank board tasks by",
 		description = "Which metric ranks the tasks on a notice board (badges, highlight, side list)",

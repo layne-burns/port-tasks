@@ -483,6 +483,11 @@ public class PortTasksPlugin extends Plugin
 			{
 				wantedItems.parse(config.routingWantedItems());
 			}
+			if ("routingOnlyBigBags".equals(event.getKey()))
+			{
+				boolean on = config.routingOnlyBigBags();
+				SwingUtilities.invokeLater(() -> pluginPanel.setOnlyBigBags(on));
+			}
 			clientThread.invokeLater(() ->
 			{
 				routingService.replan(courierTasks);
@@ -1183,6 +1188,18 @@ public class PortTasksPlugin extends Plugin
 	public BoardScorer.Score boardScore(int dbrow)
 	{
 		return boardScores.get(dbrow);
+	}
+
+	/** Routing extension: the side panel's "only Large/Huge bags" checkbox writes the config through here. */
+	public void setOnlyBigBags(boolean on)
+	{
+		configManager.setConfiguration(CONFIG_GROUP, "routingOnlyBigBags", on);
+	}
+
+	/** Routing extension: true if the "only Large/Huge bags" filter rules out this offered courier task. */
+	public boolean bagFilterHides(CourierTaskData d)
+	{
+		return !boardScorer.passesBagFilter(d);
 	}
 
 	/** Routing extension: base XP for a task (learned from play, else the wiki), or null. */
