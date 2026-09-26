@@ -75,6 +75,47 @@ public final class DepositGuard
 			+ String.join(" / ", elsewhere) + ". Shift-click to deposit anyway.";
 	}
 
+	/**
+	 * At a port with deliveries due, the warning for holding a crate that isn't for this port (e.g. the wrong
+	 * crate taken out of the hold): "Wrong crate - this one is for X". Null if nothing is held, a held crate is
+	 * for this port, or the port has no deliveries (then holding crates is just loading).
+	 */
+	public String wrongCrateWarning(PortLocation port, List<CourierTask> tasks)
+	{
+		if (port == null)
+		{
+			return null;
+		}
+		boolean deliveriesHere = false;
+		for (CourierTask t : tasks)
+		{
+			if (t.getData().getDeliveryLocation() == port && t.getDelivered() < t.getData().cargoAmount)
+			{
+				deliveriesHere = true;
+			}
+		}
+		if (!deliveriesHere)
+		{
+			return null;
+		}
+		Set<Integer> held = heldItemIds();
+		Set<String> elsewhere = new LinkedHashSet<>();
+		for (CourierTask t : tasks)
+		{
+			CourierTaskData d = t.getData();
+			if (t.getDelivered() >= d.cargoAmount || !held.contains(d.cargo))
+			{
+				continue;
+			}
+			if (d.getDeliveryLocation() == port)
+			{
+				return null;
+			}
+			elsewhere.add(d.getDeliveryLocation().getName());
+		}
+		return elsewhere.isEmpty() ? null : "Wrong crate - this one is for " + String.join(" / ", elsewhere);
+	}
+
 	/** True if the player is holding a crate that belongs to an unfinished courier task. */
 	public boolean holdsCourierCrate(List<CourierTask> tasks)
 	{

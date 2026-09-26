@@ -85,7 +85,7 @@ class RoutingNextStopOverlay extends OverlayPanel
 		{
 			return false;
 		}
-		PortLocation boatPort = plugin.routingService.boatPort();
+		PortLocation boatPort = plugin.routingService.dockedPort();
 
 		panelComponent.getChildren().add(TitleComponent.builder().text("Courier route").color(config.routingLegColor()).build());
 		// Work left at the boat's own port comes first as "Here"; then the next stop and the one after.

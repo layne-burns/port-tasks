@@ -43,7 +43,7 @@ class RoutingCargoHoldOverlay extends WidgetItemOverlay
 		{
 			return;
 		}
-		PortLocation port = plugin.routingService.boatPort();
+		PortLocation port = plugin.routingService.dockedPort();
 		if (port == null)
 		{
 			return;

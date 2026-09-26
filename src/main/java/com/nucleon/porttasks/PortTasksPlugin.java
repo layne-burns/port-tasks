@@ -809,7 +809,7 @@ public class PortTasksPlugin extends Plugin
 		if (config.routingBlockWrongDock() && config.routingEnabled() && carryingCargo()
 			&& dockGuard.isDockClick(event.getMenuOption(), event.getMenuTarget(), event.getId()))
 		{
-			PortLocation wrong = dockGuard.wrongPort(routingService.plan());
+			PortLocation wrong = dockGuard.wrongPort(routingService.plan(), gangplanks);
 			if (wrong != null)
 			{
 				event.consume();
@@ -835,8 +835,9 @@ public class PortTasksPlugin extends Plugin
 	}
 
 	/**
-	 * Routing extension: the warning to show above the player, if any: a recently blocked dock, or (while
-	 * docked with a plan that has no work at this port) a standing wrong-port reminder.
+	 * Routing extension: the warning to show above the player, if any: a recently blocked dock; a standing
+	 * wrong-port reminder (docked, holding a crate, nothing planned here); or a wrong-crate reminder (docked
+	 * where deliveries are due, holding a crate for another port).
 	 */
 	public String routingOverheadWarning()
 	{
@@ -844,12 +845,16 @@ public class PortTasksPlugin extends Plugin
 		{
 			return overheadWarning;
 		}
-		PortLocation docked = routingService.boatPort();
+		PortLocation docked = routingService.dockedPort();
 		if (config.routingBlockWrongDock() && carryingCargo() && routingService.plan() != null && docked != null
 			&& !routingService.hasWorkAt(docked))
 		{
 			PortLocation next = routingService.nextStop();
 			return "Wrong port - next stop: " + (next == null ? "?" : next.getName());
+		}
+		if (config.routingBlockWrongDeposit())
+		{
+			return depositGuard.wrongCrateWarning(docked, courierTasks);
 		}
 		return null;
 	}

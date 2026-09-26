@@ -55,7 +55,7 @@ class RoutingCargoReminderOverlay extends Overlay
 			draw(graphics, player, warning, WARNING);
 			return null;
 		}
-		PortLocation port = plugin.routingService.boatPort();
+		PortLocation port = plugin.routingService.dockedPort();
 		if (!config.routingCargoReminder() || port == null)
 		{
 			return null;
