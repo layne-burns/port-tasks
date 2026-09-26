@@ -1,33 +1,38 @@
 package com.nucleon.porttasks;
 
 import com.nucleon.porttasks.enums.PortLocation;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import javax.inject.Inject;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.WidgetItem;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.WidgetItemOverlay;
+import net.runelite.client.util.ImageUtil;
 
 /**
- * Routing extension: in the boat's cargo hold, while docked, the crates to take out at this port are marked
- * (filled box, thick border, "TAKE") and courier crates for other ports are dimmed, so the right ones are
- * obvious to click. Works alongside Port Tasks' own per-task outlines.
+ * Routing extension: in the boat's cargo hold, while docked, the crates to take out at this port are tinted
+ * (default green, like inventory tags) and labelled "TAKE", and courier crates for other ports are dimmed,
+ * so the right ones are obvious to click. Works alongside Port Tasks' own per-task outlines.
  */
 class RoutingCargoHoldOverlay extends WidgetItemOverlay
 {
 	private static final Color DIM = new Color(0, 0, 0, 140);
 
+	private static final int TINT_ALPHA = 110;
+
 	private final PortTasksPlugin plugin;
 	private final PortTasksConfig config;
+	private final ItemManager itemManager;
 
 	@Inject
-	private RoutingCargoHoldOverlay(PortTasksPlugin plugin, PortTasksConfig config)
+	private RoutingCargoHoldOverlay(PortTasksPlugin plugin, PortTasksConfig config, ItemManager itemManager)
 	{
 		this.plugin = plugin;
 		this.config = config;
+		this.itemManager = itemManager;
 		showOnInterfaces(InterfaceID.SAILING_BOAT_CARGOHOLD);
 	}
 
@@ -66,12 +71,9 @@ class RoutingCargoHoldOverlay extends WidgetItemOverlay
 			graphics.fillRect(r.x, r.y, r.width, r.height);
 			return;
 		}
-		Color c = config.routingLegColor();
-		graphics.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 70));
-		graphics.fillRect(r.x - 1, r.y - 1, r.width + 2, r.height + 2);
-		graphics.setColor(c);
-		graphics.setStroke(new BasicStroke(2));
-		graphics.drawRect(r.x - 2, r.y - 2, r.width + 3, r.height + 3);
+		Color c = config.routingTakeColor();
+		Color tint = new Color(c.getRed(), c.getGreen(), c.getBlue(), TINT_ALPHA);
+		graphics.drawImage(ImageUtil.fillImage(itemManager.getImage(itemId, widgetItem.getQuantity(), false), tint), r.x, r.y, null);
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 		graphics.setColor(Color.BLACK);
 		graphics.drawString("TAKE", r.x + 1, r.y + r.height);

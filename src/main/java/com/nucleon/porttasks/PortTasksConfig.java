@@ -575,13 +575,25 @@ public interface PortTasksConfig extends Config
 	@ConfigItem(
 		keyName = "routingHighlightHold",
 		name = "Mark crates to take",
-		description = "In the cargo hold while docked, mark the crates to take out at this port and dim crates for other ports",
+		description = "In the cargo hold while docked, tint the crates to take out at this port and dim crates for other ports",
 		section = routing,
 		position = 12
 	)
 	default boolean routingHighlightHold()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingTakeColor",
+		name = "Crates-to-take colour",
+		description = "Tint for the crates to take out at this port",
+		section = routing,
+		position = 13
+	)
+	default Color routingTakeColor()
+	{
+		return new Color(0, 255, 0);
 	}
 
 	@ConfigItem(
