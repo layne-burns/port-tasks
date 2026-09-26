@@ -573,6 +573,18 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "routingHighlightHold",
+		name = "Mark crates to take",
+		description = "In the cargo hold while docked, mark the crates to take out at this port and dim crates for other ports",
+		section = routing,
+		position = 12
+	)
+	default boolean routingHighlightHold()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "routingBagCounts",
 		name = "Bag counts",
 		description = "In the route panel, count the port bags received this session by type and size",

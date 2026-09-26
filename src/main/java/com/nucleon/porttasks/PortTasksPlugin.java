@@ -187,6 +187,8 @@ public class PortTasksPlugin extends Plugin
 	private RoutingCargoReminderOverlay routingCargoReminderOverlay;
 	@Inject
 	private RoutingBoardOverlay routingBoardOverlay;
+	@Inject
+	private RoutingCargoHoldOverlay routingCargoHoldOverlay;
 	@Getter
 	List<BountyTask> bountyTasks = new ArrayList<>();
 	@Getter
@@ -415,6 +417,7 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.add(routingNextStopOverlay);
 		overlayManager.add(routingCargoReminderOverlay);
 		overlayManager.add(routingBoardOverlay);
+		overlayManager.add(routingCargoHoldOverlay);
 
 		migrateConfiguration();
 		tracerConfig.loadConfigs(config);
@@ -464,6 +467,7 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.remove(routingNextStopOverlay);
 		overlayManager.remove(routingCargoReminderOverlay);
 		overlayManager.remove(routingBoardOverlay);
+		overlayManager.remove(routingCargoHoldOverlay);
 		overlayManager.remove(despawnTimerOverlay);
 	}
 
