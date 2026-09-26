@@ -13,9 +13,11 @@ import net.runelite.client.ui.overlay.WidgetItemOverlay;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * Routing extension: in the boat's cargo hold, while docked, the crates to take out at this port are tinted
- * (default green, like inventory tags) and labelled "TAKE", and courier crates for other ports are dimmed,
- * so the right ones are obvious to click. Works alongside Port Tasks' own per-task outlines.
+ * Routing extension: in the boat's cargo hold, the crates to take out are tinted (default green, like
+ * inventory tags) and courier crates for other ports are dimmed, so the right ones are obvious to click.
+ * Docked: crates for this port, labelled "TAKE". At sea: crates for the next stop, labelled "NEXT", so they
+ * can be grabbed on the way; but only if the next stop has deliveries (collecting cargo needs empty hands,
+ * so nothing is suggested before a pickup-only stop). Works alongside Port Tasks' own per-task outlines.
  */
 class RoutingCargoHoldOverlay extends WidgetItemOverlay
 {
@@ -44,9 +46,14 @@ class RoutingCargoHoldOverlay extends WidgetItemOverlay
 			return;
 		}
 		PortLocation port = plugin.routingService.dockedPort();
-		if (port == null)
+		boolean atSea = port == null;
+		if (atSea)
 		{
-			return;
+			port = plugin.routingService.nextStop();
+			if (port == null || !plugin.routingService.hasDeliveriesAt(port))
+			{
+				return;
+			}
 		}
 		boolean courierCrate = false;
 		boolean forHere = false;
@@ -75,9 +82,10 @@ class RoutingCargoHoldOverlay extends WidgetItemOverlay
 		Color tint = new Color(c.getRed(), c.getGreen(), c.getBlue(), TINT_ALPHA);
 		graphics.drawImage(ImageUtil.fillImage(itemManager.getImage(itemId, widgetItem.getQuantity(), false), tint), r.x, r.y, null);
 		graphics.setFont(FontManager.getRunescapeSmallFont());
+		String label = atSea ? "NEXT" : "TAKE";
 		graphics.setColor(Color.BLACK);
-		graphics.drawString("TAKE", r.x + 1, r.y + r.height);
+		graphics.drawString(label, r.x + 1, r.y + r.height);
 		graphics.setColor(c);
-		graphics.drawString("TAKE", r.x, r.y + r.height - 1);
+		graphics.drawString(label, r.x, r.y + r.height - 1);
 	}
 }

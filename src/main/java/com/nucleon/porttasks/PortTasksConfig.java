@@ -575,7 +575,7 @@ public interface PortTasksConfig extends Config
 	@ConfigItem(
 		keyName = "routingHighlightHold",
 		name = "Mark crates to take",
-		description = "In the cargo hold while docked, tint the crates to take out at this port and dim crates for other ports",
+		description = "In the cargo hold, tint the crates to take out (docked: for this port; at sea: for the next stop, if it has deliveries) and dim the rest",
 		section = routing,
 		position = 12
 	)

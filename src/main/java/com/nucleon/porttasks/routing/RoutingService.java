@@ -100,6 +100,22 @@ public final class RoutingService
 		return null;
 	}
 
+	/** True if the plan delivers something at this port. */
+	public boolean hasDeliveriesAt(PortLocation port)
+	{
+		if (plan != null)
+		{
+			for (RoutePlanner.Stop s : plan.stops)
+			{
+				if (s.port == port && !s.deliveries.isEmpty())
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/** True if the plan has a pickup or delivery at this port. */
 	public boolean hasWorkAt(PortLocation port)
 	{
