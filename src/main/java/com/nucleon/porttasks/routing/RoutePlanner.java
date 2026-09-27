@@ -3,10 +3,8 @@ package com.nucleon.porttasks.routing;
 import com.nucleon.porttasks.enums.PortLocation;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -15,8 +13,9 @@ import java.util.Set;
  * Each unfinished task contributes a pickup event at its cargo port (if crates remain there) and a delivery
  * event at its destination; a delivery is only possible after its pickup. Arriving at a port does every event
  * possible there (never worse than postponing it), so a plan is just an order of ports. Cost = tiles sailed +
- * stopCost per port visited (+ the leg to a fixed end port, if one is set). Solved exactly by memoised search
- * over (current port, events done): with at most 5 tasks there are at most 10 events.
+ * stopCost per port visited (+ the leg to a fixed end port, if one is set). Solved exactly by dynamic
+ * programming over (current port, events done): with at most 5 tasks there are at most 10 events, and only
+ * 3^5 = 243 combinations of them can occur, so a plan takes tens of microseconds.
  *
  * Capacity is not modelled (hold of 160 never binds, per the user).
  */
@@ -91,6 +90,9 @@ public final class RoutePlanner
 	}
 
 	private final ToDistance distance;
+	/** Scratch space reused between plans (best cost and next port per state); see Search. */
+	private double[] bestBuf = new double[0];
+	private int[] choiceBuf = new int[0];
 
 	public RoutePlanner(ToDistance distance)
 	{
@@ -98,7 +100,8 @@ public final class RoutePlanner
 	}
 
 	/**
-	 * The cheapest plan from {@code start} that finishes every task.
+	 * The cheapest plan from {@code start} that finishes every task. Not thread-safe (it reuses scratch
+	 * arrays); each thread needs its own planner.
 	 *
 	 * @param end      port the boat should finish at, or null for an open route
 	 * @param stopCost cost of one port visit, in tile-equivalents
@@ -108,25 +111,60 @@ public final class RoutePlanner
 		return new Search(start, tasks, end, stopCost).run();
 	}
 
-	/** One optimisation; events are numbered 2i (pickup of task i) and 2i+1 (delivery of task i). */
+	/** The most tasks one plan can hold (the game's five task slots). */
+	public static final int MAX_TASKS = 5;
+
+	/** Masks of t tasks where no delivery bit is set without its pickup bit, largest first; by t. */
+	private static final int[][] VALID_MASKS = new int[MAX_TASKS + 1][];
+
+	static
+	{
+		for (int t = 0; t < VALID_MASKS.length; t++)
+		{
+			List<Integer> masks = new ArrayList<>();
+			for (int m = (1 << (2 * t)) - 1; m >= 0; m--)
+			{
+				// Delivery bits (odd) shifted onto their pickup bits must all be set pickups.
+				int deliveries = (m >> 1) & 0x155;
+				int pickups = m & 0x155;
+				if ((deliveries & ~pickups) == 0)
+				{
+					masks.add(m);
+				}
+			}
+			VALID_MASKS[t] = masks.stream().mapToInt(Integer::intValue).toArray();
+		}
+	}
+
+	/**
+	 * One optimisation; events are numbered 2i (pickup of task i) and 2i+1 (delivery of task i), so a task is
+	 * in one of three states and only 3^t of the 4^t masks occur. The search fills best(port, done) for every
+	 * valid mask from all-done downwards (arriving somewhere only ever adds bits, so the state it leads to is
+	 * already known).
+	 */
 	private final class Search
 	{
 		private final PortLocation start;
 		private final List<TaskState> tasks;
 		private final PortLocation end;
 		private final double stopCost;
-		private final int allDone;
 		private final List<PortLocation> ports;
-		private final Map<Long, Double> memo = new HashMap<>();
-		private final Map<Long, Integer> choice = new HashMap<>();
+		/** Per port: pickup bits of tasks loading there, and pickup bits of tasks delivering there. */
+		private final int[] pickupsAt;
+		private final int[] deliverableAt;
+		private final double[][] dist;
+		private final int masks;
 
 		Search(PortLocation start, List<TaskState> tasks, PortLocation end, double stopCost)
 		{
+			if (tasks.size() > MAX_TASKS)
+			{
+				throw new IllegalArgumentException("at most " + MAX_TASKS + " tasks");
+			}
 			this.start = start;
 			this.tasks = tasks;
 			this.end = end;
 			this.stopCost = stopCost;
-			this.allDone = (1 << (2 * tasks.size())) - 1;
 			Set<PortLocation> p = new LinkedHashSet<>();
 			p.add(start);
 			for (TaskState t : tasks)
@@ -135,10 +173,41 @@ public final class RoutePlanner
 				p.add(t.destination);
 			}
 			this.ports = new ArrayList<>(p);
+			int n = ports.size();
+			pickupsAt = new int[n];
+			deliverableAt = new int[n];
+			for (int i = 0; i < tasks.size(); i++)
+			{
+				pickupsAt[ports.indexOf(tasks.get(i).cargoPort)] |= 1 << (2 * i);
+				deliverableAt[ports.indexOf(tasks.get(i).destination)] |= 1 << (2 * i);
+			}
+			dist = new double[n][n];
+			for (int a = 0; a < n; a++)
+			{
+				for (int b = 0; b < n; b++)
+				{
+					dist[a][b] = a == b ? 0 : distance.apply(ports.get(a), ports.get(b));
+				}
+			}
+			masks = 1 << (2 * tasks.size());
+			if (bestBuf.length < n * masks)
+			{
+				bestBuf = new double[n * masks];
+				choiceBuf = new int[n * masks];
+			}
+		}
+
+		/** Events done after arriving at port index {@code p}: its pickups, then deliveries whose pickup is done. */
+		private int arrive(int p, int done)
+		{
+			int after = done | pickupsAt[p];
+			return after | (after & deliverableAt[p]) << 1;
 		}
 
 		Plan run()
 		{
+			int n = ports.size();
+			int allDone = masks - 1;
 			int done0 = 0;
 			for (int i = 0; i < tasks.size(); i++)
 			{
@@ -147,12 +216,49 @@ public final class RoutePlanner
 					done0 |= 1 << (2 * i);
 				}
 			}
-			// Whatever can be done at the start port is done before leaving.
-			int done = arrive(start, done0);
-			double cost = best(0, done);
 
+			for (int done : VALID_MASKS[tasks.size()])
+			{
+				if ((done & done0) != done0)
+				{
+					continue; // never reached: those pickups are already done
+				}
+				for (int at = 0; at < n; at++)
+				{
+					double best;
+					int choice = -1;
+					if (done == allDone)
+					{
+						best = end == null ? 0 : distance.apply(ports.get(at), end);
+					}
+					else
+					{
+						best = Double.POSITIVE_INFINITY;
+						for (int p = 0; p < n; p++)
+						{
+							int after = p == at ? done : arrive(p, done);
+							if (after == done)
+							{
+								continue; // nothing to do there yet
+							}
+							double c = dist[at][p] + stopCost + bestBuf[p * masks + after];
+							if (c < best)
+							{
+								best = c;
+								choice = p;
+							}
+						}
+					}
+					bestBuf[at * masks + done] = best;
+					choiceBuf[at * masks + done] = choice;
+				}
+			}
+
+			// Whatever can be done at the start port is done before leaving.
+			int done = arrive(0, done0);
+			double cost = bestBuf[done];
 			List<Stop> stops = new ArrayList<>();
-			Stop first = stopAt(start, done0, done);
+			Stop first = stopAt(ports.get(0), done0, done);
 			if (first != null)
 			{
 				stops.add(first);
@@ -161,11 +267,11 @@ public final class RoutePlanner
 			int at = 0;
 			while (done != allDone)
 			{
-				int nextPort = choice.get(key(at, done));
-				int after = arrive(ports.get(nextPort), done);
-				stops.add(stopAt(ports.get(nextPort), done, after));
-				sailed += distance.apply(ports.get(at), ports.get(nextPort));
-				at = nextPort;
+				int next = choiceBuf[at * masks + done];
+				int after = arrive(next, done);
+				stops.add(stopAt(ports.get(next), done, after));
+				sailed += dist[at][next];
+				at = next;
 				done = after;
 			}
 			if (end != null)
@@ -173,64 +279,6 @@ public final class RoutePlanner
 				sailed += distance.apply(ports.get(at), end);
 			}
 			return new Plan(Collections.unmodifiableList(stops), cost, sailed);
-		}
-
-		/** Minimum remaining cost from port index {@code at} with events {@code done} completed. */
-		private double best(int at, int done)
-		{
-			if (done == allDone)
-			{
-				return end == null ? 0 : distance.apply(ports.get(at), end);
-			}
-			long k = key(at, done);
-			Double cached = memo.get(k);
-			if (cached != null)
-			{
-				return cached;
-			}
-			double bestCost = Double.POSITIVE_INFINITY;
-			int bestPort = -1;
-			for (int p = 0; p < ports.size(); p++)
-			{
-				if (p == at)
-				{
-					continue;
-				}
-				int after = arrive(ports.get(p), done);
-				if (after == done)
-				{
-					continue; // nothing to do there yet
-				}
-				double c = distance.apply(ports.get(at), ports.get(p)) + stopCost + best(p, after);
-				if (c < bestCost)
-				{
-					bestCost = c;
-					bestPort = p;
-				}
-			}
-			memo.put(k, bestCost);
-			choice.put(k, bestPort);
-			return bestCost;
-		}
-
-		/** Events done after arriving at {@code port}: all its pickups, then deliveries whose pickup is done. */
-		private int arrive(PortLocation port, int done)
-		{
-			for (int i = 0; i < tasks.size(); i++)
-			{
-				if (tasks.get(i).cargoPort == port)
-				{
-					done |= 1 << (2 * i);
-				}
-			}
-			for (int i = 0; i < tasks.size(); i++)
-			{
-				if (tasks.get(i).destination == port && (done & (1 << (2 * i))) != 0)
-				{
-					done |= 1 << (2 * i + 1);
-				}
-			}
-			return done;
 		}
 
 		private Stop stopAt(PortLocation port, int before, int after)
@@ -249,11 +297,6 @@ public final class RoutePlanner
 				}
 			}
 			return pickups.isEmpty() && deliveries.isEmpty() ? null : new Stop(port, pickups, deliveries);
-		}
-
-		private long key(int at, int done)
-		{
-			return ((long) at << 32) | done;
 		}
 	}
 }

@@ -215,8 +215,11 @@ public class PortTasksPluginPanel extends PluginPanel
 			final String wanted;
 			/** The board tint for how much sailing it adds. */
 			final Color detour;
+			/** Part of the best set of tasks to take. */
+			final boolean chosen;
 
-			public BoardRow(int rank, PortLocation pickup, PortLocation delivery, String name, String metric, String wanted, Color detour)
+			public BoardRow(int rank, PortLocation pickup, PortLocation delivery, String name, String metric, String wanted, Color detour,
+				boolean chosen)
 			{
 				this.rank = rank;
 				this.pickup = pickup;
@@ -225,15 +228,17 @@ public class PortTasksPluginPanel extends PluginPanel
 				this.metric = metric;
 				this.wanted = wanted;
 				this.detour = detour;
+				this.chosen = chosen;
 			}
 		}
 
 		/**
-		 * Routing extension: the offered tasks of the last notice board, ranked, one line each: rank, route in
-		 * the board's detour colour, the ranking metric's value, and a star if it can give a wanted item (the
-		 * task's name and the items are in the tooltip). Swing thread only.
+		 * Routing extension: the offered tasks of the last notice board, ranked, one line each: rank (in the
+		 * accent colour for the best set), route in the board's detour colour, the ranking metric's value, and a star if it can give
+		 * a wanted item (the task's name and the items are in the tooltip). {@code summary} is a line about the
+		 * best set, or null. Swing thread only.
 		 */
-		public void showBoard(PortLocation board, String metricName, List<BoardRow> rows)
+		public void showBoard(PortLocation board, String metricName, List<BoardRow> rows, String summary)
 		{
 			boardView.removeAll();
 			if (!rows.isEmpty())
@@ -245,23 +250,34 @@ public class PortTasksPluginPanel extends PluginPanel
 				header.setVersions(PortNames.full(board) + " board \u00B7 " + metricName,
 					PortNames.abbreviation(board) + " \u00B7 " + metricName, PortNames.abbreviation(board));
 				boardView.add(header);
+				if (summary != null)
+				{
+					FitLabel line = new FitLabel();
+					line.setFont(FontManager.getRunescapeSmallFont());
+					line.setForeground(config.routingLegColor());
+					line.setBorder(new EmptyBorder(0, 0, 2, 0));
+					line.setVersions(summary);
+					boardView.add(line);
+				}
+				boolean sets = summary != null;
 				for (BoardRow r : rows)
 				{
-					boardView.add(boardLine(r, config.routingLegColor()));
+					boardView.add(boardLine(r, config.routingLegColor(), sets));
 				}
 			}
 			boardView.revalidate();
 			boardView.repaint();
 		}
 
-		static JPanel boardLine(BoardRow r, Color best)
+		/** @param sets whether the best set is shown (then its tasks' ranks are in the accent colour, not rank 1's) */
+		static JPanel boardLine(BoardRow r, Color best, boolean sets)
 		{
 			JPanel line = new JPanel(new BorderLayout(4, 0));
 			line.setBorder(new EmptyBorder(1, 0, 1, 0));
 			line.setToolTipText("<html>" + r.name + (r.wanted.isEmpty() ? "" : "<br>Wanted: " + r.wanted) + "</html>");
 
 			JLabel rank = new JLabel("#" + r.rank);
-			rank.setForeground(r.rank == 1 ? best : Color.GRAY);
+			rank.setForeground(sets ? (r.chosen ? best : Color.GRAY) : (r.rank == 1 ? best : Color.GRAY));
 			FitLabel route = new FitLabel();
 			route.setVersions(PortNames.route(r.wanted.isEmpty() ? "" : "\u2605 ", r.pickup, r.delivery));
 			route.setForeground(r.detour);

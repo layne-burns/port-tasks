@@ -155,6 +155,10 @@ public class NoticeBoardTooltip extends Overlay
 		}
 		StringBuilder sb = new StringBuilder("<br>").append(toColTag(config.routingLegColor()))
 			.append("Rank #").append(s.rank).append(" by ").append(config.routingRankBy()).append("</col>");
+		if (plugin.inBestSet(data.getDbrow()))
+		{
+			sb.append("<br>").append(toColTag(config.routingLegColor())).append("In the best set to take</col>");
+		}
 		if (config.routingShowAdded())
 		{
 			sb.append(String.format("<br>Adds: %+.0f tiles, %+d stop%s", s.addedTiles, s.addedStops, Math.abs(s.addedStops) == 1 ? "" : "s"));

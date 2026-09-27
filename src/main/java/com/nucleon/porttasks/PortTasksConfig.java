@@ -161,8 +161,24 @@ public interface PortTasksConfig extends Config
 		return BoardScorer.RankBy.XP_PER_ADDED_TILE;
 	}
 
-	@ConfigItem(keyName = "routingBoardBadges", name = "Rank badges", description = "Show each offered task's rank on the board and outline the best",
+	@ConfigItem(keyName = "routingBestSet", name = "Suggest best set",
+		description = "Outline the set of offered tasks (up to your free task slots) that gives your whole route the best rate,"
+			+ " instead of only the single best task. It can be several tasks, or none if nothing beats what you hold",
 		section = boardSection, position = 7)
+	default boolean routingBestSet()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBestSetBy", name = "Best set by", description = "What the best set maximises per tile of the route",
+		section = boardSection, position = 8)
+	default BoardScorer.SetObjective routingBestSetBy()
+	{
+		return BoardScorer.SetObjective.XP;
+	}
+
+	@ConfigItem(keyName = "routingBoardBadges", name = "Rank badges", description = "Show each offered task's rank on the board and outline the best",
+		section = boardSection, position = 9)
 	default boolean routingBoardBadges()
 	{
 		return true;
@@ -171,7 +187,7 @@ public interface PortTasksConfig extends Config
 	@ConfigItem(keyName = "routingDetourTint", name = "Tint by detour",
 		description = "Tint each offered courier task by how much sailing it adds: pink = nothing, then green to red,"
 			+ " red = twice its own pickup-to-delivery distance (an out-and-back trip just for it)",
-		section = boardSection, position = 8)
+		section = boardSection, position = 10)
 	default boolean routingDetourTint()
 	{
 		return true;
@@ -179,7 +195,7 @@ public interface PortTasksConfig extends Config
 
 	@Range(max = 100)
 	@ConfigItem(keyName = "routingDetourOpacity", name = "Detour tint opacity", description = "Opacity of the detour tint, 0-100%",
-		section = boardSection, position = 9)
+		section = boardSection, position = 11)
 	default int routingDetourOpacity()
 	{
 		return 35;
@@ -190,7 +206,7 @@ public interface PortTasksConfig extends Config
 		name = "Wanted items",
 		description = "One item per line, optionally '= value' in coins (e.g. Crystal shard = 2000). Tasks that can give one are highlighted; a value replaces the item's alch value",
 		section = boardSection,
-		position = 10
+		position = 12
 	)
 	default String routingWantedItems()
 	{
@@ -198,7 +214,7 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(keyName = "routingWantedColor", name = "Wanted item colour", description = "Highlight for tasks that can give a wanted item",
-		section = boardSection, position = 11)
+		section = boardSection, position = 13)
 	default Color routingWantedColor()
 	{
 		return new Color(255, 200, 0);
@@ -208,7 +224,7 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardTooltip",
 		name = "Tooltip",
 		description = "Task information in a tooltip when hovering an offered task",
-		position = 12,
+		position = 14,
 		section = boardSection
 	)
 	default boolean noticeBoardTooltip()
@@ -217,56 +233,56 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(keyName = "routingShowAdded", name = "Tooltip: added tiles/stops", description = "How much sailing and how many stops the task adds",
-		section = boardSection, position = 13)
+		section = boardSection, position = 15)
 	default boolean routingShowAdded()
 	{
 		return true;
 	}
 
 	@ConfigItem(keyName = "routingShowDetour", name = "Tooltip: detour", description = "Added tiles as a share of an out-and-back trip just for the task, in its tint colour",
-		section = boardSection, position = 14)
+		section = boardSection, position = 16)
 	default boolean routingShowDetour()
 	{
 		return true;
 	}
 
 	@ConfigItem(keyName = "routingShowXpPerTile", name = "Tooltip: XP per added tile", description = "XP divided by the added cost",
-		section = boardSection, position = 15)
+		section = boardSection, position = 17)
 	default boolean routingShowXpPerTile()
 	{
 		return true;
 	}
 
 	@ConfigItem(keyName = "routingShowValuePerTile", name = "Tooltip: value per added tile", description = "Expected bag value divided by the added cost",
-		section = boardSection, position = 16)
+		section = boardSection, position = 18)
 	default boolean routingShowValuePerTile()
 	{
 		return true;
 	}
 
 	@ConfigItem(keyName = "routingShowRouteFit", name = "Tooltip: route fit", description = "Added cost as a share of doing the task on its own (0% = free ride)",
-		section = boardSection, position = 17)
+		section = boardSection, position = 19)
 	default boolean routingShowRouteFit()
 	{
 		return true;
 	}
 
 	@ConfigItem(keyName = "routingShowPlanRate", name = "Tooltip: plan rate after", description = "XP per tile of the whole plan if you take this task",
-		section = boardSection, position = 18)
+		section = boardSection, position = 20)
 	default boolean routingShowPlanRate()
 	{
 		return false;
 	}
 
 	@ConfigItem(keyName = "routingShowBag", name = "Tooltip: bag", description = "Bag size and expected value",
-		section = boardSection, position = 19)
+		section = boardSection, position = 21)
 	default boolean routingShowBag()
 	{
 		return true;
 	}
 
 	@ConfigItem(keyName = "routingShowDrops", name = "Tooltip: signature drops", description = "The delivery port's special reward-bag items for this bag size",
-		section = boardSection, position = 20)
+		section = boardSection, position = 22)
 	default boolean routingShowDrops()
 	{
 		return true;
@@ -276,7 +292,7 @@ public interface PortTasksConfig extends Config
 		keyName = "minColor",
 		name = "Tooltip: low XP/tile colour",
 		description = "Colour of the tooltip's XP/tile for the worst tasks (blends to the high colour)",
-		position = 21,
+		position = 23,
 		section = boardSection
 	)
 	default Color minColor()
@@ -288,7 +304,7 @@ public interface PortTasksConfig extends Config
 		keyName = "maxColor",
 		name = "Tooltip: high XP/tile colour",
 		description = "Colour of the tooltip's XP/tile for the best tasks",
-		position = 22,
+		position = 24,
 		section = boardSection
 	)
 	default Color maxColor()
@@ -301,7 +317,7 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideOpacity",
 		name = "Hidden task opacity",
 		description = "How dark hidden tasks (below) are dimmed, 0-100%",
-		position = 23,
+		position = 25,
 		section = boardSection
 	)
 	default int noticeBoardHideOpacity()
@@ -313,7 +329,7 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideIncompletable",
 		name = "Hide incompletable tasks",
 		description = "Hide tasks you do not have the level to complete.",
-		position = 24,
+		position = 26,
 		section = boardSection
 	)
 	default boolean noticeBoardHideIncompletable()
@@ -325,7 +341,7 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideBounty",
 		name = "Hide bounty tasks",
 		description = "Hide bounty tasks.",
-		position = 25,
+		position = 27,
 		section = boardSection
 	)
 	default boolean noticeBoardHideBounty()
@@ -337,7 +353,7 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideCourier",
 		name = "Hide courier tasks",
 		description = "Hide courier tasks.",
-		position = 26,
+		position = 28,
 		section = boardSection
 	)
 	default boolean noticeBoardHideCourier()
@@ -349,7 +365,7 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideUntagged",
 		name = "Hide untagged tasks",
 		description = "Hide tasks without a tag. (Shift right-click a task to tag)",
-		position = 27,
+		position = 29,
 		section = boardSection
 	)
 	default boolean noticeBoardHideUntagged()
@@ -361,7 +377,7 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightTaskConflicts",
 		name = "Highlight conflicting tasks",
 		description = "Highlight tasks you are prevented from taking due to conflicting cargo.",
-		position = 28,
+		position = 30,
 		section = boardSection
 	)
 	default boolean highlightTaskConflicts()
@@ -373,7 +389,7 @@ public interface PortTasksConfig extends Config
 		keyName = "taskConflictColor",
 		name = "Task conflict colour",
 		description = "Color to highlight conflicting tasks.",
-		position = 29,
+		position = 31,
 		section = boardSection
 	)
 	default Color taskConflictColor()

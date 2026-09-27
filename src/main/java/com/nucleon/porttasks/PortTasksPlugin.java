@@ -118,6 +118,9 @@ import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ColorUtil;
+import com.nucleon.porttasks.routing.SubsetChooser;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import net.runelite.client.util.ImageUtil;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -191,6 +194,18 @@ public class PortTasksPlugin extends Plugin
 	private volatile int boardVersion;
 	/** Best XP per tile over all courier tasks, for the tooltip's colour scale; see updateBestXpPerTile(). */
 	private double bestXpPerTile;
+	/**
+	 * Routing extension: the best set of offered tasks to take (see SubsetChooser), or null while a search runs
+	 * or when off. Searches run on their own thread; bestSetGeneration drops results that a newer search
+	 * replaced, and bestSetKey skips searching again when nothing it depends on changed.
+	 */
+	private volatile SubsetChooser.Result bestSet;
+	private String bestSetKey;
+	private int bestSetGeneration;
+	private ExecutorService setSearchExecutor;
+	/** The last board's ranking and port, to re-show the side list when the best set arrives. */
+	private List<BoardScorer.Score> lastRanked = Collections.emptyList();
+	private PortLocation lastBoard;
 	@Inject
 	private RoutingNextStopOverlay routingNextStopOverlay;
 	@Inject
@@ -356,6 +371,12 @@ public class PortTasksPlugin extends Plugin
 		log.info("Starting plugin Port Tasks");
 
 		boatLocator = new BoatLocator(client);
+		setSearchExecutor = Executors.newSingleThreadExecutor(r ->
+		{
+			Thread t = new Thread(r, "port-tasks-best-set");
+			t.setDaemon(true);
+			return t;
+		});
 		routingService = new RoutingService(config, boatLocator, eventBus);
 		clientThread.invokeLater(() ->
 		{
@@ -489,6 +510,7 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.remove(routingBoardOverlay);
 		overlayManager.remove(routingCargoHoldOverlay);
 		overlayManager.remove(despawnTimerOverlay);
+		setSearchExecutor.shutdownNow();
 	}
 
 	@SuppressWarnings("unused")
@@ -1307,18 +1329,127 @@ public class PortTasksPlugin extends Plugin
 		PortLocation start = routingService.boatPort() != null ? routingService.boatPort() : board;
 		List<BoardScorer.Score> ranked = boardScorer.score(courierTasks, start, offered, sailingLevel);
 		Map<Integer, BoardScorer.Score> byDbrow = new HashMap<>();
-		List<PortTasksPluginPanel.BoardRow> rows = new ArrayList<>();
-		BoardScorer.RankBy by = config.routingRankBy();
 		for (BoardScorer.Score s : ranked)
 		{
 			byDbrow.put(s.dbrow, s);
-			CourierTaskData d = CourierTaskData.getByDbrow(s.dbrow);
-			rows.add(new PortTasksPluginPanel.BoardRow(s.rank, d.getCargoLocation(), d.getDeliveryLocation(), s.name,
-				rankValue(s, by), String.join(", ", s.wantedDrops), s.detourColor));
 		}
 		boardScores = byDbrow;
+		lastRanked = ranked;
+		lastBoard = board;
+		searchBestSet(start, offered);
 		boardChanged();
-		SwingUtilities.invokeLater(() -> pluginPanel.showBoard(board, by.toString(), rows));
+		publishBoard();
+	}
+
+	/**
+	 * Routing extension: starts a best-set search for this board on its own thread (up to ~0.2 s for a big board
+	 * with five free slots), unless nothing it depends on changed since the last one. The result is applied on
+	 * the client thread.
+	 */
+	private void searchBestSet(PortLocation start, List<CourierTaskData> offered)
+	{
+		if (!config.routingBestSet())
+		{
+			bestSet = null;
+			bestSetKey = null;
+			return;
+		}
+		int free = Math.max(0, taskSlots() - courierTasks.size() - bountyTasks.size());
+		BoardScorer.SetSearch search = boardScorer.setSearch(courierTasks, start, offered, sailingLevel, free);
+		if (search.key.equals(bestSetKey))
+		{
+			return;
+		}
+		log.debug("[routing] best set: {} task slots at level {} (extra-slots varbit {}), {} free",
+			taskSlots(), sailingLevel, client.getVarbitValue(VarbitID.PORT_TASK_EXTRA_SLOTS_UNLOCKED), free);
+		bestSetKey = search.key;
+		bestSet = null;
+		int generation = ++bestSetGeneration;
+		setSearchExecutor.execute(() ->
+		{
+			SubsetChooser.Result result;
+			try
+			{
+				result = search.run();
+			}
+			catch (RuntimeException e)
+			{
+				log.warn("[routing] best set search failed", e);
+				return;
+			}
+			clientThread.invokeLater(() ->
+			{
+				if (generation != bestSetGeneration)
+				{
+					return; // a newer search replaced this one
+				}
+				bestSet = result;
+				log.debug("[routing] best set {}: {}/tile (now {}), {} sets, exact {}", result.dbrows,
+					result.rate, result.heldRate, result.evaluated, result.exact);
+				boardChanged();
+				publishBoard();
+			});
+		});
+	}
+
+	/** Task slots at the player's Sailing level: 1, plus one each at 7, 28, 56 and 84 (wiki, Port task). */
+	private int taskSlots()
+	{
+		int level = sailingLevel;
+		return level >= 84 ? 5 : level >= 56 ? 4 : level >= 28 ? 3 : level >= 7 ? 2 : 1;
+	}
+
+	/** Routing extension: true if the best set includes this offered task. */
+	public boolean inBestSet(int dbrow)
+	{
+		SubsetChooser.Result r = bestSet;
+		return r != null && config.routingBestSet() && r.dbrows.contains(dbrow);
+	}
+
+	/** Routing extension: shows the last board's ranking, and the best set, in the side list. */
+	private void publishBoard()
+	{
+		if (lastBoard == null)
+		{
+			return;
+		}
+		BoardScorer.RankBy by = config.routingRankBy();
+		List<PortTasksPluginPanel.BoardRow> rows = new ArrayList<>();
+		for (BoardScorer.Score s : lastRanked)
+		{
+			CourierTaskData d = CourierTaskData.getByDbrow(s.dbrow);
+			rows.add(new PortTasksPluginPanel.BoardRow(s.rank, d.getCargoLocation(), d.getDeliveryLocation(), s.name,
+				rankValue(s, by), String.join(", ", s.wantedDrops), s.detourColor, inBestSet(s.dbrow)));
+		}
+		String summary = bestSetSummary();
+		PortLocation board = lastBoard;
+		SwingUtilities.invokeLater(() -> pluginPanel.showBoard(board, by.toString(), rows, summary));
+	}
+
+	/** One line about the best set for the side list, or null if the feature is off. */
+	private String bestSetSummary()
+	{
+		if (!config.routingBestSet())
+		{
+			return null;
+		}
+		if (taskSlots() - courierTasks.size() - bountyTasks.size() <= 0)
+		{
+			return "Task slots full";
+		}
+		SubsetChooser.Result r = bestSet;
+		if (r == null)
+		{
+			return "Finding the best set...";
+		}
+		String unit = config.routingBestSetBy() == BoardScorer.SetObjective.VALUE ? "gp/tile" : "xp/tile";
+		String approx = r.exact ? "" : " (top tasks only)";
+		if (r.dbrows.isEmpty())
+		{
+			return String.format("Best: take none, %.1f %s now%s", r.heldRate, unit, approx);
+		}
+		return String.format("Best set: %d task%s, %.1f %s (now %.1f)%s", r.dbrows.size(), r.dbrows.size() == 1 ? "" : "s",
+			r.rate, unit, r.heldRate, approx);
 	}
 
 	private static String rankValue(BoardScorer.Score s, BoardScorer.RankBy by)

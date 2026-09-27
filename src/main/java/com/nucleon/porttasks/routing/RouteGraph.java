@@ -3,6 +3,7 @@ package com.nucleon.porttasks.routing;
 import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.enums.PortPaths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,10 +20,14 @@ import java.util.List;
 public final class RouteGraph
 {
 	private final PortLocation[] ports;
+	/** PortLocation ordinal -> index into the tables (-1 for EMPTY). */
+	private final int[] indexByOrdinal = new int[PortLocation.values().length];
 	/** drawn[i][j]: length of the shortest drawn path directly between i and j, or +infinity if none. */
 	private final double[][] drawn;
 	/** All-pairs distances over the drawn paths, refined by learned legs. */
 	private volatile double[][] cost;
+	/** Goes up each time the distances change (learned legs applied). */
+	private volatile int version;
 
 	public RouteGraph()
 	{
@@ -35,6 +40,11 @@ public final class RouteGraph
 			}
 		}
 		ports = list.toArray(new PortLocation[0]);
+		Arrays.fill(indexByOrdinal, -1);
+		for (int i = 0; i < ports.length; i++)
+		{
+			indexByOrdinal[ports[i].ordinal()] = i;
+		}
 		int n = ports.length;
 		drawn = new double[n][n];
 		for (int i = 0; i < n; i++)
@@ -94,6 +104,13 @@ public final class RouteGraph
 			}
 		}
 		cost = d;
+		version++;
+	}
+
+	/** Changes whenever the distances do; lets a caller tell whether a cached result is still valid. */
+	public int version()
+	{
+		return version;
 	}
 
 	/** Sailing distance in tiles for planning, or +infinity if nothing connects them. */
@@ -104,13 +121,11 @@ public final class RouteGraph
 
 	private int index(PortLocation p)
 	{
-		for (int i = 0; i < ports.length; i++)
+		int i = indexByOrdinal[p.ordinal()];
+		if (i < 0)
 		{
-			if (ports[i] == p)
-			{
-				return i;
-			}
+			throw new IllegalArgumentException("unknown port " + p);
 		}
-		throw new IllegalArgumentException("unknown port " + p);
+		return i;
 	}
 }

@@ -69,6 +69,8 @@ Enumerating the subsets is cheap: a board shows few tasks and `f ≤ 5`. Several
 
 The last one guards against a high marginal ratio on a tiny pick that lowers the overall rate.
 
+**Best set (built 2026-09-27).** The metrics above rank single tasks; the suggestion is now a whole set: the `S` (with `|S| ≤ f`, `S = ∅` allowed) maximising **plan rate after**, `(R(T) + R(S)) / best(T ∪ S)`, with `R` = XP or expected bag value (setting). Rationale: continuous sailing is a renewal process whose long-run rate is reward per cycle over tiles per cycle, and choosing the cycle with the best ratio is Dinkelbach's criterion (take a set exactly when it beats the going rate). Every set is tried (`Σ_{i≤f} C(|O|, i)`, e.g. 1,586 for 12 tasks and 5 slots); the planner does one plan in ~30 µs (array DP over the 3^t reachable event masks), so a large board takes ~0.2 s, run off the client thread. Above 5,000 sets only the strongest single candidates are kept and the result is marked approximate. `f` = slots for the Sailing level (1, +1 at 7, 28, 56, 84) minus tasks held. Known limit: where the plan ends isn't valued (a set ending near good boards isn't preferred).
+
 ### 2.3 Output
 
 - The **next leg only**: draw the path from `p₀` to the first stop of the optimal route. This replaces Port Tasks' "all paths at once" while planning is on.

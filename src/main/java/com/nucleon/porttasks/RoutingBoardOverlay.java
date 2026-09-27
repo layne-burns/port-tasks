@@ -87,16 +87,18 @@ class RoutingBoardOverlay extends Overlay
 			{
 				continue;
 			}
-			if (s.rank == 1)
+			// The best set's tasks are outlined (or, with that off, the single best task).
+			boolean picked = config.routingBestSet() ? plugin.inBestSet(e.getKey()) : s.rank == 1;
+			if (picked)
 			{
 				outline(graphics, r, config.routingLegColor(), 0);
 			}
 			if (!s.wantedDrops.isEmpty())
 			{
-				outline(graphics, r, config.routingWantedColor(), s.rank == 1 ? 3 : 0);
+				outline(graphics, r, config.routingWantedColor(), picked ? 3 : 0);
 			}
 			OverlayUtil.renderTextLocation(graphics, new Point(r.x + 3, r.y + 12), "#" + s.rank,
-				s.rank == 1 ? config.routingLegColor() : Color.WHITE);
+				picked ? config.routingLegColor() : Color.WHITE);
 		}
 		return null;
 	}

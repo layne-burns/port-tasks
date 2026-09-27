@@ -194,6 +194,121 @@ public final class BoardScorer
 		return scores;
 	}
 
+	/** What the best set is chosen for (config). */
+	public enum SetObjective
+	{
+		XP("XP per tile"),
+		VALUE("Bag value per tile");
+
+		private final String label;
+
+		SetObjective(String label)
+		{
+			this.label = label;
+		}
+
+		@Override
+		public String toString()
+		{
+			return label;
+		}
+	}
+
+	/**
+	 * A best-set search with its inputs gathered (on the client thread, since item values need it), ready to
+	 * run anywhere: it only reads the route graph, which is thread-safe. {@link #key} identifies the inputs,
+	 * so an unchanged board isn't searched again.
+	 */
+	public static final class SetSearch
+	{
+		public final String key;
+		private final RouteGraph graph;
+		private final PortLocation start;
+		private final List<RoutePlanner.TaskState> held;
+		private final double heldReward;
+		private final List<SubsetChooser.Candidate> candidates;
+		private final int slots;
+		private final PortLocation end;
+		private final double stopCost;
+
+		SetSearch(RouteGraph graph, PortLocation start, List<RoutePlanner.TaskState> held, double heldReward,
+			List<SubsetChooser.Candidate> candidates, int slots, PortLocation end, double stopCost, String key)
+		{
+			this.graph = graph;
+			this.start = start;
+			this.held = held;
+			this.heldReward = heldReward;
+			this.candidates = candidates;
+			this.slots = slots;
+			this.end = end;
+			this.stopCost = stopCost;
+			this.key = key;
+		}
+
+		public SubsetChooser.Result run()
+		{
+			return new SubsetChooser(graph::distance).choose(start, held, heldReward, candidates, slots, end, stopCost);
+		}
+	}
+
+	/**
+	 * Gathers a best-set search over the offered courier tasks that could be taken (not held, bag size
+	 * allowed, level high enough, reward known) for {@code slots} free slots.
+	 */
+	public SetSearch setSearch(List<CourierTask> held, PortLocation start, Collection<CourierTaskData> offered, int sailingLevel,
+		int slots)
+	{
+		SetObjective objective = config.routingBestSetBy();
+		PortLocation end = config.routingEnd().port();
+		double stopCost = config.routingStopCost();
+		StringBuilder key = new StringBuilder().append(start).append('|').append(end).append('|').append(stopCost)
+			.append('|').append(slots).append('|').append(objective).append('|').append(graph.version());
+
+		List<RoutePlanner.TaskState> heldStates = new ArrayList<>();
+		Set<Integer> heldIds = new LinkedHashSet<>();
+		double heldReward = 0;
+		for (CourierTask t : held)
+		{
+			CourierTaskData d = t.getData();
+			heldIds.add(d.getId());
+			if (t.getDelivered() >= d.cargoAmount)
+			{
+				continue;
+			}
+			boolean needsPickup = t.getCargoTaken() < d.cargoAmount;
+			heldStates.add(new RoutePlanner.TaskState(d.getId(), d.getCargoLocation(), d.getDeliveryLocation(), needsPickup));
+			Double r = reward(d, objective);
+			heldReward += r == null ? 0 : r;
+			key.append("|h").append(d.getId()).append(needsPickup ? 'p' : 'd');
+		}
+		List<SubsetChooser.Candidate> candidates = new ArrayList<>();
+		for (CourierTaskData d : offered)
+		{
+			Double r = reward(d, objective);
+			if (heldIds.contains(d.getId()) || !passesBagFilter(d) || r == null
+				|| sailingLevel > 0 && d.getLevelRequired() > sailingLevel)
+			{
+				continue;
+			}
+			candidates.add(new SubsetChooser.Candidate(d.getDbrow(),
+				new RoutePlanner.TaskState(d.getId(), d.getCargoLocation(), d.getDeliveryLocation(), true), r));
+			key.append("|c").append(d.getDbrow()).append('=').append(Math.round(r));
+		}
+		return new SetSearch(graph, start, heldStates, heldReward, candidates, slots, end, stopCost, key.toString());
+	}
+
+	/** A task's reward for the objective (XP, or expected bag value), or null if its XP isn't known. */
+	private Double reward(CourierTaskData d, SetObjective objective)
+	{
+		Integer taskXp = xp.xp(d.getId());
+		if (taskXp == null)
+		{
+			return null;
+		}
+		return objective == SetObjective.VALUE
+			? valuer.expectedTaskValue(taskXp, d.getDeliveryLocation().getName()) : (double) taskXp;
+	}
+
 	/** Added tiles below this count as a free ride (plan lengths are sums of real-valued path lengths). */
 	private static final double FREE_RIDE_TILES = 0.5;
 	private static final Color FREE_RIDE = new Color(255, 105, 180);
