@@ -27,6 +27,7 @@
 package com.nucleon.porttasks;
 
 import com.nucleon.porttasks.routing.BoardScorer;
+import com.nucleon.porttasks.routing.LegLearner;
 import com.nucleon.porttasks.routing.RouteEnd;
 import java.awt.Color;
 import net.runelite.client.config.Config;
@@ -757,6 +758,39 @@ public interface PortTasksConfig extends Config
 	default int routingDetourOpacity()
 	{
 		return 35;
+	}
+
+	@ConfigItem(keyName = "routingLearnLegs", name = "Learn leg lengths",
+		description = "Measure each leg you sail, dock to dock, and plan with the measured lengths instead of the hand-drawn paths."
+			+ " A leg over twice the current estimate counts as a detour and is ignored",
+		section = routing, position = 33)
+	default boolean routingLearnLegs()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingLegEstimate", name = "Learned length",
+		description = "Which of a leg's measurements (last 25) to plan with: your best run, or a typical one",
+		section = routing, position = 34)
+	default LegLearner.Estimate routingLegEstimate()
+	{
+		return LegLearner.Estimate.MINIMUM;
+	}
+
+	@ConfigItem(keyName = "routingLegCounter", name = "Show tiles sailed",
+		description = "Next-stop panel: tiles and time for the leg under way, against the estimate, and the last leg",
+		section = routing, position = 35)
+	default boolean routingLegCounter()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingForgetLegs", name = "Forget learned legs",
+		description = "Tick to delete every learned leg length and go back to the hand-drawn paths (unticks itself)",
+		section = routing, position = 36)
+	default boolean routingForgetLegs()
+	{
+		return false;
 	}
 
 	enum Overlay

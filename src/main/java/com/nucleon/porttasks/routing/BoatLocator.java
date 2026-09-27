@@ -6,6 +6,8 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
+import net.runelite.api.WorldEntity;
+import net.runelite.api.WorldView;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.DBTableID;
 import net.runelite.api.gameval.VarbitID;
@@ -25,7 +27,7 @@ public final class BoatLocator
 	};
 
 	// Move mode is 4 while the player is on the boat at a dock, 0-3 at sea (seen in game, 2026-09-25).
-	private static final int MOVE_MODE_DOCKED = 4;
+	public static final int MOVE_MODE_DOCKED = 4;
 	/** How near the boat's dock the player must be, off the boat, to count as at that port. */
 	private static final int AT_PORT_RADIUS = 60;
 
@@ -90,6 +92,34 @@ public final class BoatLocator
 		Player player = client.getLocalPlayer();
 		WorldPoint where = player == null ? null : player.getWorldLocation();
 		return where != null && port.getNavigationLocation().distanceTo2D(where) <= AT_PORT_RADIUS ? port : null;
+	}
+
+	/** True if the player is on their boat. */
+	public boolean onBoat()
+	{
+		return client.getVarbitValue(VarbitID.SAILING_PLAYER_IS_ON_PLAYER_BOAT) == 1;
+	}
+
+	/** True if the player is on their boat and it is docked (at a port or elsewhere). */
+	public boolean dockedOnBoat()
+	{
+		return onBoat() && client.getVarbitValue(VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE) == MOVE_MODE_DOCKED;
+	}
+
+	/**
+	 * Where the boat the player is on is, in world coordinates, or null if they aren't on a boat. (On a boat
+	 * the player lives in the boat's own world view; the boat is an entity in the top-level one.)
+	 */
+	public WorldPoint boatWorldPoint()
+	{
+		Player player = client.getLocalPlayer();
+		WorldView view = player == null ? null : player.getWorldView();
+		if (view == null || view.isTopLevel() || view.getId() == WorldView.TOPLEVEL)
+		{
+			return null;
+		}
+		WorldEntity boat = client.getTopLevelWorldView().worldEntities().byIndex(view.getId());
+		return boat == null ? null : WorldPoint.fromLocalInstance(client, boat.getLocalLocation());
 	}
 
 	/**

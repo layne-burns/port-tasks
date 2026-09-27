@@ -11,7 +11,13 @@ import net.runelite.api.coords.WorldPoint;
  * Travel cost between any two ports (SPEC-routing.md §3, v1). Port Tasks' hand-drawn PortPaths are the edges,
  * weighted by their length in tiles and usable in both directions; all-pairs shortest paths (Floyd–Warshall,
  * about 30 ports) give d(u, v) for every pair, including pairs with no drawn path of their own, and remember
- * the chain of paths so a leg can be drawn. Built once; immutable and thread-safe after construction.
+ * the chain of paths so a leg can be drawn.
+ *
+ * Legs learned from sailing (LegLearner) refine the planning distances: each learned pair becomes a direct
+ * edge with its measured length (replacing a drawn path between the same two ports), and the all-pairs
+ * distances are recomputed, so pairs that pass through it improve too. That happens only when a leg is
+ * learned or a setting changes. Drawing still follows the drawn paths. Thread-safe: the distance table is
+ * replaced whole.
  */
 public final class RouteGraph
 {
@@ -29,11 +35,14 @@ public final class RouteGraph
 	}
 
 	private final PortLocation[] ports;
+	/** Shortest distances over the drawn paths alone, and their routes (next, edge) for drawing. */
 	private final double[][] dist;
 	/** next[i][j]: the port after i on the shortest route from i to j, or -1 if unreachable. */
 	private final int[][] next;
 	/** edge[i][j]: the drawn path used for the direct hop i -> j (shortest one if several). */
 	private final Hop[][] edge;
+	/** Planning distances: dist, refined by learned legs. */
+	private volatile double[][] cost;
 
 	public RouteGraph()
 	{
@@ -78,31 +87,67 @@ public final class RouteGraph
 			edge[b][a] = new Hop(p, true);
 		}
 
+		floydWarshall(dist, next);
+		cost = dist;
+	}
+
+	/** All-pairs shortest paths in place; {@code next} (may be null) follows the first hop of each. */
+	private static void floydWarshall(double[][] d, int[][] next)
+	{
+		int n = d.length;
 		for (int k = 0; k < n; k++)
 		{
 			for (int i = 0; i < n; i++)
 			{
-				if (dist[i][k] == Double.POSITIVE_INFINITY)
+				if (d[i][k] == Double.POSITIVE_INFINITY)
 				{
 					continue;
 				}
 				for (int j = 0; j < n; j++)
 				{
-					double viaK = dist[i][k] + dist[k][j];
-					if (viaK < dist[i][j])
+					double viaK = d[i][k] + d[k][j];
+					if (viaK < d[i][j])
 					{
-						dist[i][j] = viaK;
-						next[i][j] = next[i][k];
+						d[i][j] = viaK;
+						if (next != null)
+						{
+							next[i][j] = next[i][k];
+						}
 					}
 				}
 			}
 		}
 	}
 
-	/** Sailing distance in tiles, or +infinity if no chain of drawn paths connects them. */
+	/**
+	 * Plans with these learned legs from now on (an empty list goes back to the drawn paths alone): each is a
+	 * direct edge of its measured length, replacing a drawn path between the same ports.
+	 */
+	public void setLearned(List<LegLearner.Learned> learned)
+	{
+		int n = ports.length;
+		double[][] d = new double[n][n];
+		for (int i = 0; i < n; i++)
+		{
+			for (int j = 0; j < n; j++)
+			{
+				d[i][j] = i == j ? 0 : edge[i][j] != null ? edge[i][j].path.getDistance() : Double.POSITIVE_INFINITY;
+			}
+		}
+		for (LegLearner.Learned l : learned)
+		{
+			int a = index(l.a);
+			int b = index(l.b);
+			d[a][b] = d[b][a] = l.tiles;
+		}
+		floydWarshall(d, null);
+		cost = d;
+	}
+
+	/** Sailing distance in tiles for planning, or +infinity if nothing connects them. */
 	public double distance(PortLocation from, PortLocation to)
 	{
-		return dist[index(from)][index(to)];
+		return cost[index(from)][index(to)];
 	}
 
 	/** The drawn paths that make up the shortest route, in travel order; empty if same port or unreachable. */
