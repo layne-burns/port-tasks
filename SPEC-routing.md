@@ -82,7 +82,7 @@ The last one guards against a high marginal ratio on a tiny pick that lowers the
 - **Wanted items:** a settings list, one item per line, with an optional `= value` (for example `Crystal shard = 2000`).
   - Tasks that can give a listed item are highlighted, and the item is marked in their tooltip.
   - A given value replaces the item's alch value in the value metrics. This replaces the separate crystal-shard and spirit-flake settings.
-- Leg drawing (phase 3, changed 2026-09-25): the Shortest Path plugin now paths at sea, so by default the next leg is drawn by it. We send the next stop's dock as its target over its PluginMessage API, and only when the next stop changes. Our own drawn-path rendering is the fallback (setting `routingUseShortestPath`).
+- Leg drawing (phase 3, changed 2026-09-25): the Shortest Path plugin now paths at sea, so by default the next leg is drawn by it. We send the next stop's dock as its target over its PluginMessage API, and only when the next stop changes. **Changed 2026-09-27:** Shortest Path is the only leg drawing; our own drawn-path rendering, Port Tasks' per-task lines and their tracer were removed, and routing is always on.
 
 ## 3. Travel cost `d(u, v)`
 
@@ -98,7 +98,7 @@ No available plugin does sea pathfinding. As of 2026-09-24, Shortest Path says i
 
 ### 3.1 Region
 
-**Changed 2026-09-25:** routes are planned for **all ports** by default; every port is connected in the graph (tested). The western set below remains as an off-by-default setting (`routingWestOnly`) until routes are classified properly.
+**Changed 2026-09-25:** routes are planned for **all ports** by default; every port is connected in the graph (tested). The western set below was a first-pass restriction; its setting was removed on 2026-09-27.
 
 
 Western ports only:

@@ -47,7 +47,6 @@ public final class CourierTaskData
 	private final PortLocation cargoLocation;
 	private final PortLocation deliveryLocation;
 	public final PortPaths dockMarkers;
-	public final boolean reversePath;
 	public final String taskName;
 	public final int cargo;
 	public final int cargoAmount;
@@ -59,7 +58,7 @@ public final class CourierTaskData
 
 	private static double MAX_XP_PER_TILE;
 
-	private CourierTaskData(int dbrow, int id, int levelRequired, PortLocation noticeBoard, PortLocation cargoLocation, PortLocation deliveryLocation, PortPaths dockMarkers, boolean reversePath, String taskName, int cargo, int cargoAmount, double xpPerTile)
+	private CourierTaskData(int dbrow, int id, int levelRequired, PortLocation noticeBoard, PortLocation cargoLocation, PortLocation deliveryLocation, PortPaths dockMarkers, String taskName, int cargo, int cargoAmount, double xpPerTile)
 	{
 		this.dbrow = dbrow;
 		this.id = id;
@@ -68,7 +67,6 @@ public final class CourierTaskData
 		this.cargoLocation = cargoLocation;
 		this.deliveryLocation = deliveryLocation;
 		this.dockMarkers = dockMarkers;
-		this.reversePath = reversePath;
 		this.taskName = taskName;
 		this.cargo = cargo;
 		this.cargoAmount = cargoAmount;
@@ -149,9 +147,7 @@ public final class CourierTaskData
 			return null;
 		}
 
-		PortPathMatch match = PortPaths.findPath(cargoLocation, deliveryLocation);
-		PortPaths dockMarkers = match.getPath();
-		boolean reversePath = match.isReversed();
+		PortPaths dockMarkers = PortPaths.findPath(cargoLocation, deliveryLocation);
 
 		String taskName = (String) client.getDBTableField(dbrow, DBTableID.PortTask.COL_NAME, 0)[0];
 
@@ -163,7 +159,7 @@ public final class CourierTaskData
 		double distance = dockMarkers.getDistance();
 		double xpPerTile = distance > 0 ? ( reward / distance) : 0.0;
 
-		return new CourierTaskData(dbrow, id, level, noticeBoard, cargoLocation, deliveryLocation, dockMarkers, reversePath, taskName, cargo, cargoAmount, xpPerTile);
+		return new CourierTaskData(dbrow, id, level, noticeBoard, cargoLocation, deliveryLocation, dockMarkers, taskName, cargo, cargoAmount, xpPerTile);
 	}
 
 	private static Integer getIntField(Client client, int rowId, int col, int tupleIndex, int objectIndex)

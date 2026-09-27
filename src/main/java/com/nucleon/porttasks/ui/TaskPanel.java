@@ -29,5 +29,4 @@ package com.nucleon.porttasks.ui;
 public interface TaskPanel
 {
 	void openPortTaskColorPicker();
-	void updateVisibility();
 }

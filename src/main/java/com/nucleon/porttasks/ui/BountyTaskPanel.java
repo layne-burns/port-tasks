@@ -27,7 +27,6 @@
 package com.nucleon.porttasks.ui;
 
 import com.nucleon.porttasks.BountyTask;
-import com.nucleon.porttasks.ui.adapters.HidePortTaskSlotOverlay;
 import com.nucleon.porttasks.ui.adapters.PortTaskSlotOverlayColor;
 import com.nucleon.porttasks.PortTasksPlugin;
 import com.nucleon.porttasks.enums.TaskReward;
@@ -69,8 +68,6 @@ private static final Border NAME_BOTTOM_BORDER = new CompoundBorder(
 
 private static final ImageIcon
 		BORDER_COLOR_ICON,
-		VISIBLE_ICON,
-		INVISIBLE_ICON,
 		ANCHOR,
 		BOAT,
 		DESTINATION,
@@ -80,7 +77,6 @@ private static final ImageIcon
 
 public final JLabel
 		PortTaskOverlayColor = new JLabel(),
-		hidePortTaskSlotOverlay = new JLabel(),
 		cargoRemainingText = new JLabel(),
 		npcLabel = new JLabel(),
 		destinationLabel = new JLabel(),
@@ -103,11 +99,7 @@ static
 	final BufferedImage borderImg = ImageUtil.loadImageResource(PortTasksPlugin.class, "border_color_icon.png");
 	BORDER_COLOR_ICON = new ImageIcon(ImageUtil.alphaOffset(borderImg, -100));
 
-	final BufferedImage visibleImg = ImageUtil.loadImageResource(PortTasksPlugin.class, "visible_icon.png");
-	VISIBLE_ICON = new ImageIcon(visibleImg);
 
-	final BufferedImage invisibleImg = ImageUtil.loadImageResource(PortTasksPlugin.class, "invisible_icon.png");
-	INVISIBLE_ICON = new ImageIcon(invisibleImg);
 
 	final BufferedImage boatImg = ImageUtil.loadImageResource(PortTasksPlugin.class, "boat.png");
 	BOAT = new ImageIcon(boatImg);
@@ -155,8 +147,6 @@ public BountyTaskPanel(PortTasksPlugin plugin, BountyTask bountyTask, ClientThre
 	JPanel xpWrapper = new JPanel(new BorderLayout());
 	xpWrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-	JPanel hideOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 3, 3));
-	hideOverlay.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
 	PortTaskSlotContainer.setBorder(new EmptyBorder(0, 0, 0, 0));
 	PortTaskSlotContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -188,16 +178,12 @@ public BountyTaskPanel(PortTasksPlugin plugin, BountyTask bountyTask, ClientThre
 
 	PortTaskInformationCenter.add(cargoRemainingText);
 
-	hidePortTaskSlotOverlay.setToolTipText((bountyTask.isTracking() ? "Hide" : "Show") + " Bounty Task");
-	hidePortTaskSlotOverlay.addMouseListener(new HidePortTaskSlotOverlay(hidePortTaskSlotOverlay, bountyTask, this, plugin));
 
-	hideOverlay.add(hidePortTaskSlotOverlay);
 	taskName.setText(bountyTask.getData().taskName);
 	taskName.setHorizontalAlignment(SwingConstants.CENTER);
 
 
 	nameWrapper.add(taskName, BorderLayout.CENTER);
-	nameWrapper.add(hideOverlay, BorderLayout.EAST);
 	nameWrapper.add(anchorLabel, BorderLayout.WEST);
 
 	JPanel portSlotWrapper = new JPanel();
@@ -227,7 +213,6 @@ public BountyTaskPanel(PortTasksPlugin plugin, BountyTask bountyTask, ClientThre
 
 	add(portSlotWrapper);
 
-	updateVisibility();
 	updateColorIndicators();
 	updateImages(bountyTask);
 
@@ -264,11 +249,6 @@ public BountyTaskPanel(PortTasksPlugin plugin, BountyTask bountyTask, ClientThre
 		PortTaskOverlayColor.setBorder(new MatteBorder(0, 0, 3, 0, bountyTask.getOverlayColor()));
 		PortTaskOverlayColor.setIcon(BORDER_COLOR_ICON);
 }
-
-	public void updateVisibility()
-	{
-		hidePortTaskSlotOverlay.setIcon(bountyTask.isTracking() ? VISIBLE_ICON : INVISIBLE_ICON);
-	}
 
 	private void updateImages(BountyTask bountyTask)
 	{

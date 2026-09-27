@@ -59,19 +59,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import javax.inject.Inject;
-import javax.inject.Named;
 import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import com.nucleon.porttasks.enums.PortPaths;
 import com.nucleon.porttasks.enums.PortTaskTrigger;
 import com.nucleon.porttasks.overlay.TaskHighlight;
-import com.nucleon.porttasks.overlay.TracerConfig;
 import com.nucleon.porttasks.ui.PortTasksPluginPanel;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
@@ -151,17 +146,9 @@ public class PortTasksPlugin extends Plugin
 	@Inject
 	ChatMessageManager chatMessageManager;
 	@Inject
-	private PortTasksMapOverlay sailingHelperMapOverlay;
-	@Inject
-	private PortTasksWorldOverlay sailingHelperWorldOverlay;
-	@Inject
-	private PortTasksMiniMapOverlay sailingHelperMiniMapOverlay;
-	@Inject
 	private PortTasksLedgerOverlay portTasksLedgerOverlay;
 	@Inject
 	private PortTaskModelRenderer portTaskModelRenderer;
-	@Inject
-	private PortTaskCargoOverlay portTaskCargoOverlay;
 	@Inject
 	private TaskHighlight taskHighlight;
 	@Inject
@@ -246,10 +233,6 @@ public class PortTasksPlugin extends Plugin
 	@Getter
 	private Color highlightNoticeboardsColor;
 	@Getter
-	private boolean taskHeightOffset;
-	@Getter
-	private int pathDrawDistance;
-	@Getter
 	private int noticeBoardHideOpactity;
 	@Getter
 	private Color minColor;
@@ -259,19 +242,12 @@ public class PortTasksPlugin extends Plugin
 	private boolean highlightTaskConflicts;
 	@Getter
 	private Color taskConflictColor;
-	@Getter
-	private boolean despawnTimer;
 	@Inject
 	private ClientThread clientThread;
 	@Inject
 	private ItemManager itemManager;
 	@Inject
-	public TracerConfig tracerConfig;
-	@Inject
 	private EventBus eventBus;
-	@Inject
-	@Named("developerMode")
-	public boolean developerMode;
 	private int[] varPlayers;
 	private PortTasksPluginPanel pluginPanel;
 	private NavigationButton navigationButton;
@@ -287,9 +263,6 @@ public class PortTasksPlugin extends Plugin
 
 	private static final String MARK = "Mark task";
 	private static final String UNMARK = "Unmark task";
-	@Getter
-	@Setter
-	public PortPaths developerPathSelected;
 
 	private static final Set<Integer> SAILING_BOAT_CARGO_HOLDS = Set.of(
 		ObjectID.SAILING_BOAT_CARGO_HOLD_REGULAR_RAFT,
@@ -443,7 +416,6 @@ public class PortTasksPlugin extends Plugin
 		clientToolbar.addNavigation(navigationButton);
 		registerOverlays();
 		pluginPanel.rebuild();
-		eventBus.register(tracerConfig);
 
 		loadWidgetTags();
 		overlayManager.add(taskHighlight);
@@ -453,7 +425,6 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.add(routingCargoHoldOverlay);
 
 		migrateConfiguration();
-		tracerConfig.loadConfigs(config);
 		highlightGangplanks = config.highlightGangplanks();
 		highlightGangplanksColor = config.highlightGangplanksColor();
 		highlightCargoHolds = config.highlightCargoHolds();
@@ -461,8 +432,6 @@ public class PortTasksPlugin extends Plugin
 		highlightNoticeboards = config.highlightNoticeboards();
 		highlightNoticeboardsColor = config.highlightNoticeboardsColor();
 		highlightHelmMissingCargo = config.highlightHelmMissingCargo();
-		taskHeightOffset = config.enableHeightOffset();
-		pathDrawDistance = config.pathDrawDistance();
 		noticeBoardHideOpactity = mapOpacity(config.noticeBoardHideOpacity());
 		noticeBoardHideIncompletable = config.noticeBoardHideIncompletable();
 		noticeBoardHideBounty = config.noticeBoardHideBounty();
@@ -488,13 +457,8 @@ public class PortTasksPlugin extends Plugin
 		cargoHolds.clear();
 		bountyCorpses.clear();
 
-		eventBus.unregister(tracerConfig);
-
-		overlayManager.remove(sailingHelperWorldOverlay);
-		overlayManager.remove(sailingHelperMapOverlay);
 		overlayManager.remove(portTasksLedgerOverlay);
 		overlayManager.remove(portTaskModelRenderer);
-		overlayManager.remove(portTaskCargoOverlay);
 		overlayManager.remove(noticeBoardTooltip);
 		overlayManager.remove(taskHighlight);
 		overlayManager.remove(routingNextStopOverlay);
@@ -544,12 +508,6 @@ public class PortTasksPlugin extends Plugin
 		}
 		switch (event.getKey())
 		{
-			case "drawOverlay":
-				overlayManager.remove(sailingHelperWorldOverlay);
-				overlayManager.remove(sailingHelperMapOverlay);
-				overlayManager.remove(portTasksLedgerOverlay);
-				registerOverlays();
-				return;
 			case "noticeBoardTooltip":
 				if (event.getNewValue().contains("true"))
 				{
@@ -589,21 +547,6 @@ public class PortTasksPlugin extends Plugin
 				return;
 			case "highlightCargoHoldsColor":
 				highlightCargoHoldsColor = config.highlightCargoHoldsColor();
-				return;
-			case "enableTracer":
-				tracerConfig.setTracerEnabled(config.enableTracer());
-				return;
-			case "tracerSpeed":
-				tracerConfig.setTracerSpeed(config.tracerSpeed());
-				return;
-			case "tracerIntensity":
-				tracerConfig.setTracerIntensity(1f - (config.tracerIntensity() / 100f));
-				return;
-			case "pathOffset":
-				taskHeightOffset = config.enableHeightOffset();
-				return;
-			case "pathDrawDistance":
-				pathDrawDistance = config.pathDrawDistance();
 				return;
 			case "noticeBoardHideOpacity":
 				noticeBoardHideOpactity = mapOpacity(config.noticeBoardHideOpacity());
@@ -862,7 +805,7 @@ public class PortTasksPlugin extends Plugin
 				return;
 			}
 		}
-		if (config.routingBlockWrongDock() && config.routingEnabled() && carryingCargo()
+		if (config.routingBlockWrongDock() && carryingCargo()
 			&& dockGuard.isDockClick(event.getMenuOption(), event.getMenuTarget(), event.getId()))
 		{
 			PortLocation wrong = dockGuard.wrongPort(routingService.plan(), gangplanks);
@@ -941,12 +884,6 @@ public class PortTasksPlugin extends Plugin
 			{
 				legTracker.sample(boatLocator.boatWorldPoint());
 			}
-		}
-		// Plans are made on varbit changes; a plugin restart or a routing toggle changes none, so make sure
-		// there is one. Cheap: returns at once while the boat is at sea.
-		if (config.routingEnabled() && routingService.plan() == null && !courierTasks.isEmpty())
-		{
-			routingService.replan(courierTasks);
 		}
 		// prune tracked objects that have passed their timer
 		bountyCorpses.removeIf(corpse -> Instant.now().toEpochMilli() > corpse.getStartTime().toEpochMilli() + corpse.getDespawnTime());
@@ -1396,7 +1333,7 @@ public class PortTasksPlugin extends Plugin
 				CourierTaskData courrierData = CourierTaskData.fromId(value);
 				if (courrierData != null)
 				{
-					courierTasks.add(new CourierTask(courrierData, slot, false, 0, true, true, getNavColorForSlot(trigger.getSlot()), 0));
+					courierTasks.add(new CourierTask(courrierData, slot, false, 0, true, getNavColorForSlot(trigger.getSlot()), 0));
 					routingDiagnostics.logTask(slot, courrierData);
 					pluginPanel.rebuild();
 					return;
@@ -1405,7 +1342,7 @@ public class PortTasksPlugin extends Plugin
 				BountyTaskData bountyData = BountyTaskData.fromId(value);
 				if (bountyData != null)
 				{
-					bountyTasks.add(new BountyTask(bountyData, slot, false, 0, true, true, getNavColorForSlot(slot), 0));
+					bountyTasks.add(new BountyTask(bountyData, slot, false, 0, true, getNavColorForSlot(slot), 0));
 					pluginPanel.rebuild();
 				}
 				return;
@@ -1473,6 +1410,12 @@ public class PortTasksPlugin extends Plugin
 			int value = client.getVarbitValue(varPlayers, varbit.getId());
 			handlePortTaskTrigger(varbit, value);
 		}
+		// Plans are otherwise made on varbit changes, and a reload (e.g. after a plugin restart) changes none.
+		routingService.replan(courierTasks);
+		if (!offeredTasks.isEmpty())
+		{
+			rescoreBoard();
+		}
 	}
 
 	private void clearTasksForReload()
@@ -1483,15 +1426,6 @@ public class PortTasksPlugin extends Plugin
 
 	private void registerOverlays()
 	{
-		if (config.getDrawOverlay() == PortTasksConfig.Overlay.BOTH || config.getDrawOverlay() == PortTasksConfig.Overlay.MAP)
-		{
-			overlayManager.add(sailingHelperMapOverlay);
-		}
-
-		if (config.getDrawOverlay() == PortTasksConfig.Overlay.BOTH || config.getDrawOverlay() == PortTasksConfig.Overlay.WORLD)
-		{
-			overlayManager.add(sailingHelperWorldOverlay);
-		}
 		if (config.noticeBoardTooltip())
 		{
 			overlayManager.add(noticeBoardTooltip);
@@ -1502,7 +1436,6 @@ public class PortTasksPlugin extends Plugin
 		}
 		overlayManager.add(portTasksLedgerOverlay);
 		overlayManager.add(portTaskModelRenderer);
-		overlayManager.add(portTaskCargoOverlay);
 	}
 
 	public void saveSlotSettings()
@@ -1560,15 +1493,25 @@ public class PortTasksPlugin extends Plugin
 		return amt;
 	}
 
+	/**
+	 * Settings of features this fork removed (the per-task path lines and their tracer, the task-item
+	 * outlines, and the routing on/off, Shortest Path and western-ports switches, now always on or gone).
+	 * Cleared so they don't linger in the profile.
+	 */
+	private static final String[] REMOVED_KEYS = {
+		"drawOverlay", "pathOffset", "pathDrawDistance",
+		"enableTracer", "tracerSpeed", "tracerIntensity", "highlightTaskItems", "routingEnabled", "routingUseShortestPath",
+		"routingWestOnly",
+	};
+
 	private void migrateConfiguration()
-	{	// min 5 max 25 <- version 1.4.0 -> min 100 max 250
-		if (config.pathDrawDistance() < 100)
+	{
+		for (String key : REMOVED_KEYS)
 		{
-			configManager.setConfiguration(
-					config.CONFIG_GROUP,
-					"pathDrawDistance",
-					150
-			);
+			if (configManager.getConfiguration(CONFIG_GROUP, key) != null)
+			{
+				configManager.unsetConfiguration(CONFIG_GROUP, key);
+			}
 		}
 	}
 

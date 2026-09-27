@@ -36,263 +36,248 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
 
+/**
+ * Settings, grouped by where they act: planning the route, the notice board, at port and on board, the
+ * panels, bounty tasks, and the board reset tracker. Keys are unchanged from before the regrouping, so
+ * saved values carry over. Routing is always on and the next leg is always drawn by Shortest Path.
+ */
 @ConfigGroup(PortTasksConfig.CONFIG_GROUP)
 public interface PortTasksConfig extends Config
 {
 	String CONFIG_GROUP = "porttasks";
 
+	// ---------------------------------------------------------------- Route planning
+
 	@ConfigSection(
-			name = "Path Settings",
-			description = "Configure animation and visual settings for tracers",
-			position = 1
+		name = "Route planning",
+		description = "How the courier route is planned",
+		position = 0
 	)
-	String pathSection = "pathSection";
-	@ConfigItem(
-			keyName = "navColor",
-			name = "Task 1 Color",
-			description = "The color of the navigation line",
-			section = pathSection
-	)
-	default Color getNavColor()
-	{
-		return new Color(201, 51, 255);
-	}
-	@ConfigItem(
-			keyName = "navColor2",
-			name = "Task 2 Color",
-			description = "The color of the navigation line",
-			section = pathSection
-	)
-	default Color getNavColor2()
-	{
-		return new Color(255, 51, 105);
-	}
-	@ConfigItem(
-			keyName = "navColor3",
-			name = "Task 3 Color",
-			description = "The color of the navigation line",
-			section = pathSection
-	)
-	default Color getNavColor3()
-	{
-		return new Color(255, 201, 51);
-	}
-	@ConfigItem(
-			keyName = "navColor4",
-			name = "Task 4 Color",
-			description = "The color of the navigation line",
-			section = pathSection
-	)
-	default Color getNavColor4()
-	{
-		return new Color(105, 255, 51);
-	}
-	@ConfigItem(
-			keyName = "navColor5",
-			name = "Task 5 Color",
-			description = "The color of the navigation line",
-			section = pathSection
-	)
-	default Color getNavColor5()
-	{
-		return new Color(51, 255, 201);
-	}
+	String planningSection = "planningSection";
 
+	@Range(max = 500)
 	@ConfigItem(
-			keyName = "drawOverlay",
-			name = "Draw Path",
-			description = "Draw path for port task",
-			section = pathSection
+		keyName = "routingStopCost",
+		name = "Stop cost (tiles)",
+		description = "How much one port stop costs, as tiles of sailing (docking, walking to the ledger, loading)",
+		section = planningSection,
+		position = 1
 	)
-	default Overlay getDrawOverlay()
-	{
-		return Overlay.BOTH;
-	}
-
-	@ConfigItem(
-			keyName = "pathOffset",
-			name = "Offset Height Per Task",
-			description = "each path will be drawn at a different height",
-			section = pathSection
-	)
-	default boolean enableHeightOffset()
-	{
-		return false;
-	}
-
-	@Range(min = 100, max = 250)
-	@ConfigItem(
-			keyName = "pathDrawDistance",
-			name = "Draw Distance",
-			description = "Path Draw Distance",
-			section = pathSection
-	)
-	default int pathDrawDistance()
-	{
-		return 150;
-	}
-	@ConfigSection(
-			name = "Tracer Settings",
-			description = "Configure animation and visual settings for overlay direction tracers",
-			position = 1
-	)
-	String tracerSection = "tracerSection";
-
-	@ConfigItem(
-			keyName = "enableTracer",
-			name = "Enable Tracer Overlay",
-			description = "Toggle tracer animation on path lines",
-			section = tracerSection
-	)
-	default boolean enableTracer()
-	{
-		return false;
-	}
-
-	@Range(min = 0, max = 60)
-	@ConfigItem(
-			keyName = "tracerSpeed",
-			name = "Tracer Speed",
-			description = "Adjust how fast the tracer animation moves (lower = slower)",
-			section = tracerSection
-	)
-	default int tracerSpeed()
+	default int routingStopCost()
 	{
 		return 30;
 	}
 
-	@Range(min = 0, max = 100)
 	@ConfigItem(
-			keyName = "tracerIntensity",
-			name = "Tracer Intensity",
-			description = "Control brightness or visibility of the tracer (0–100%)",
-			section = tracerSection
-	)
-	default int tracerIntensity()
-	{
-		return 50;
-	}
-
-	@ConfigSection(
-		name = "Overlay Settings",
-		description = "Configuration for overlays",
+		keyName = "routingEnd",
+		name = "Finish at",
+		description = "Where the route should end: anywhere, or the far end of your sweep",
+		section = planningSection,
 		position = 2
 	)
-	String overlaySection = "overlaySection";
+	default RouteEnd routingEnd()
+	{
+		return RouteEnd.ANYWHERE;
+	}
 
-	@ConfigItem(
-		keyName = "highlightGangplanks",
-		name = "Highlight Gangplanks",
-		description = "Outline gangplanks in the world",
-		position = 1,
-		section = overlaySection
+	@ConfigItem(keyName = "routingLearnLegs", name = "Learn leg lengths",
+		description = "Measure each leg you sail, dock to dock, and plan with the measured lengths instead of the hand-drawn paths."
+			+ " A leg over twice the current estimate counts as a detour and is ignored",
+		section = planningSection, position = 3)
+	default boolean routingLearnLegs()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingLegEstimate", name = "Learned length",
+		description = "Which of a leg's measurements (last 25) to plan with: your best run, or a typical one",
+		section = planningSection, position = 4)
+	default LegLearner.Estimate routingLegEstimate()
+	{
+		return LegLearner.Estimate.MINIMUM;
+	}
+
+	@ConfigItem(keyName = "routingForgetLegs", name = "Forget learned legs",
+		description = "Tick to delete every learned leg length and go back to the hand-drawn paths (unticks itself)",
+		section = planningSection, position = 5)
+	default boolean routingForgetLegs()
+	{
+		return false;
+	}
+
+	// ---------------------------------------------------------------- Notice board
+
+	@ConfigSection(
+		name = "Notice board",
+		description = "Which offered tasks to show, how they are ranked and tinted, and the tooltip",
+		position = 1
 	)
-	default boolean highlightGangplanks()
+	String boardSection = "boardSection";
+
+	// Bag-size filter: a courier task whose bag size is switched off is dimmed on the board and left out of
+	// the ranking. Size follows from base XP; coin or reward bag is random (1 in 5 is a reward bag). Mirrored
+	// by the side panel's T/S/M/L/H boxes; keys are "routingBag" + BagSize.wikiName().
+	String BAG_FILTER_TIP = "Offer courier tasks that give a bag of this size (coin or reward: 1 in 5 is a reward bag). Also in the side panel";
+
+	@ConfigItem(keyName = "routingBagTiny", name = "Tiny bag tasks", description = BAG_FILTER_TIP, section = boardSection, position = 1)
+	default boolean routingBagTiny()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBagSmall", name = "Small bag tasks", description = BAG_FILTER_TIP, section = boardSection, position = 2)
+	default boolean routingBagSmall()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBagMedium", name = "Medium bag tasks", description = BAG_FILTER_TIP, section = boardSection, position = 3)
+	default boolean routingBagMedium()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBagLarge", name = "Large bag tasks", description = BAG_FILTER_TIP, section = boardSection, position = 4)
+	default boolean routingBagLarge()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBagHuge", name = "Huge bag tasks", description = BAG_FILTER_TIP, section = boardSection, position = 5)
+	default boolean routingBagHuge()
 	{
 		return true;
 	}
 
 	@ConfigItem(
-		keyName = "highlightGangplanksColor",
-		name = "Color",
-		description = "Color used to outline gangplanks in the world",
-		position = 2,
-		section = overlaySection
+		keyName = "routingRankBy",
+		name = "Rank board tasks by",
+		description = "Which metric ranks the tasks on a notice board (badges, highlight, side list)",
+		section = boardSection,
+		position = 6
 	)
-	default Color highlightGangplanksColor()
+	default BoardScorer.RankBy routingRankBy()
 	{
-		return Color.YELLOW;
+		return BoardScorer.RankBy.XP_PER_ADDED_TILE;
 	}
 
-	@ConfigItem(
-		keyName = "highlightNoticeboards",
-		name = "Highlight Noticeboards",
-		description = "Outline noticeboards in the world",
-		position = 3,
-		section = overlaySection
-	)
-	default boolean highlightNoticeboards()
+	@ConfigItem(keyName = "routingBoardBadges", name = "Rank badges", description = "Show each offered task's rank on the board and outline the best",
+		section = boardSection, position = 7)
+	default boolean routingBoardBadges()
 	{
 		return true;
 	}
 
-	@ConfigItem(
-		keyName = "highlightNoticeboardsColor",
-		name = "Color",
-		description = "Color used to outline noticeboards in the world",
-		position = 4,
-		section = overlaySection
-	)
-	default Color highlightNoticeboardsColor()
-	{
-		return Color.RED;
-	}
-	@ConfigItem(
-			keyName = "highlightCargoHolds",
-			name = "Highlight Cargo Holds",
-			description = "Outline cargo holds in your boat",
-			position = 5,
-			section = overlaySection
-	)
-	default boolean highlightCargoHolds()
+	@ConfigItem(keyName = "routingDetourTint", name = "Tint by detour",
+		description = "Tint each offered courier task by how much sailing it adds: pink = nothing, then green to red,"
+			+ " red = twice its own pickup-to-delivery distance (an out-and-back trip just for it)",
+		section = boardSection, position = 8)
+	default boolean routingDetourTint()
 	{
 		return true;
 	}
 
-	@ConfigItem(
-			keyName = "highlightCargoHoldsColor",
-			name = "Color",
-			description = "Color used to outline cargo holds in your boat",
-			position = 6,
-			section = overlaySection
-	)
-	default Color highlightCargoHoldsColor()
+	@Range(max = 100)
+	@ConfigItem(keyName = "routingDetourOpacity", name = "Detour tint opacity", description = "Opacity of the detour tint, 0-100%",
+		section = boardSection, position = 9)
+	default int routingDetourOpacity()
 	{
-		return Color.green;
+		return 35;
 	}
 
 	@ConfigItem(
-			keyName = "highlightTaskItems",
-			name = "Highlight Task Items",
-			description = "Outline bounty and courier items in your inventory",
-			position = 7,
-			section = overlaySection
+		keyName = "routingWantedItems",
+		name = "Wanted items",
+		description = "One item per line, optionally '= value' in coins (e.g. Crystal shard = 2000). Tasks that can give one are highlighted; a value replaces the item's alch value",
+		section = boardSection,
+		position = 10
 	)
-	default boolean highlightTaskItems()
+	default String routingWantedItems()
 	{
-		return true;
+		return "";
 	}
 
-	@ConfigItem(
-			keyName = "highlightHelmMissingCargo",
-			name = "Highlight Helm Missing Cargo",
-			description = "Outline helm on your boat",
-			position = 8,
-			section = overlaySection
-	)
-	default boolean highlightHelmMissingCargo()
+	@ConfigItem(keyName = "routingWantedColor", name = "Wanted item colour", description = "Highlight for tasks that can give a wanted item",
+		section = boardSection, position = 11)
+	default Color routingWantedColor()
 	{
-		return true;
+		return new Color(255, 200, 0);
 	}
 
 	@ConfigItem(
 		keyName = "noticeBoardTooltip",
-		name = "Noticeboard tooltip",
-		description = "Task information in a tooltip",
-		position = 9,
-		section = overlaySection
+		name = "Tooltip",
+		description = "Task information in a tooltip when hovering an offered task",
+		position = 12,
+		section = boardSection
 	)
 	default boolean noticeBoardTooltip()
 	{
 		return true;
 	}
 
+	@ConfigItem(keyName = "routingShowAdded", name = "Tooltip: added tiles/stops", description = "How much sailing and how many stops the task adds",
+		section = boardSection, position = 13)
+	default boolean routingShowAdded()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowDetour", name = "Tooltip: detour", description = "Added tiles as a share of an out-and-back trip just for the task, in its tint colour",
+		section = boardSection, position = 14)
+	default boolean routingShowDetour()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowXpPerTile", name = "Tooltip: XP per added tile", description = "XP divided by the added cost",
+		section = boardSection, position = 15)
+	default boolean routingShowXpPerTile()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowValuePerTile", name = "Tooltip: value per added tile", description = "Expected bag value divided by the added cost",
+		section = boardSection, position = 16)
+	default boolean routingShowValuePerTile()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowRouteFit", name = "Tooltip: route fit", description = "Added cost as a share of doing the task on its own (0% = free ride)",
+		section = boardSection, position = 17)
+	default boolean routingShowRouteFit()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowPlanRate", name = "Tooltip: plan rate after", description = "XP per tile of the whole plan if you take this task",
+		section = boardSection, position = 18)
+	default boolean routingShowPlanRate()
+	{
+		return false;
+	}
+
+	@ConfigItem(keyName = "routingShowBag", name = "Tooltip: bag", description = "Bag size and expected value",
+		section = boardSection, position = 19)
+	default boolean routingShowBag()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingShowDrops", name = "Tooltip: signature drops", description = "The delivery port's special reward-bag items for this bag size",
+		section = boardSection, position = 20)
+	default boolean routingShowDrops()
+	{
+		return true;
+	}
+
 	@ConfigItem(
 		keyName = "minColor",
-		name = "Tooltip minimum color",
-		description = "Color to use for the minimum range",
-		position = 10,
-		section = overlaySection
+		name = "Tooltip: low XP/tile colour",
+		description = "Colour of the tooltip's XP/tile for the worst tasks (blends to the high colour)",
+		position = 21,
+		section = boardSection
 	)
 	default Color minColor()
 	{
@@ -301,10 +286,10 @@ public interface PortTasksConfig extends Config
 
 	@ConfigItem(
 		keyName = "maxColor",
-		name = "Tooltip maximum color",
-		description = "Color to use for the maximum range",
-		position = 11,
-		section = overlaySection
+		name = "Tooltip: high XP/tile colour",
+		description = "Colour of the tooltip's XP/tile for the best tasks",
+		position = 22,
+		section = boardSection
 	)
 	default Color maxColor()
 	{
@@ -314,10 +299,10 @@ public interface PortTasksConfig extends Config
 	@Range(min = 0, max = 100)
 	@ConfigItem(
 		keyName = "noticeBoardHideOpacity",
-		name = "Notice board hider opacity",
-		description = "Opacity to obscure notice board tasks. 0-100%",
-		position = 12,
-		section = overlaySection
+		name = "Hidden task opacity",
+		description = "How dark hidden tasks (below) are dimmed, 0-100%",
+		position = 23,
+		section = boardSection
 	)
 	default int noticeBoardHideOpacity()
 	{
@@ -328,8 +313,8 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideIncompletable",
 		name = "Hide incompletable tasks",
 		description = "Hide tasks you do not have the level to complete.",
-		position = 13,
-		section = overlaySection
+		position = 24,
+		section = boardSection
 	)
 	default boolean noticeBoardHideIncompletable()
 	{
@@ -340,8 +325,8 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideBounty",
 		name = "Hide bounty tasks",
 		description = "Hide bounty tasks.",
-		position = 14,
-		section = overlaySection
+		position = 25,
+		section = boardSection
 	)
 	default boolean noticeBoardHideBounty()
 	{
@@ -352,8 +337,8 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideCourier",
 		name = "Hide courier tasks",
 		description = "Hide courier tasks.",
-		position = 15,
-		section = overlaySection
+		position = 26,
+		section = boardSection
 	)
 	default boolean noticeBoardHideCourier()
 	{
@@ -364,8 +349,8 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardHideUntagged",
 		name = "Hide untagged tasks",
 		description = "Hide tasks without a tag. (Shift right-click a task to tag)",
-		position = 16,
-		section = overlaySection
+		position = 27,
+		section = boardSection
 	)
 	default boolean noticeBoardHideUntagged()
 	{
@@ -376,8 +361,8 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightTaskConflicts",
 		name = "Highlight conflicting tasks",
 		description = "Highlight tasks you are prevented from taking due to conflicting cargo.",
-		position = 17,
-		section = overlaySection
+		position = 28,
+		section = boardSection
 	)
 	default boolean highlightTaskConflicts()
 	{
@@ -386,20 +371,294 @@ public interface PortTasksConfig extends Config
 
 	@ConfigItem(
 		keyName = "taskConflictColor",
-		name = "Task conflict color",
+		name = "Task conflict colour",
 		description = "Color to highlight conflicting tasks.",
-		position = 18,
-		section = overlaySection
+		position = 29,
+		section = boardSection
 	)
 	default Color taskConflictColor()
 	{
 		return Color.RED;
 	}
 
+	// ---------------------------------------------------------------- At port and on board
+
 	@ConfigSection(
-		name = "Notice Board Tracker",
-		description = "Configuration for notice board reset tracking.",
+		name = "At port & on board",
+		description = "Reminders, guards and highlights while docking, loading and sailing",
+		position = 2
+	)
+	String portSection = "portSection";
+
+	@ConfigItem(
+		keyName = "routingCargoReminder",
+		name = "Cargo reminder",
+		description = "While docked where the plan has a pickup, show above your character which crates still need grabbing",
+		section = portSection,
+		position = 1
+	)
+	default boolean routingCargoReminder()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingBlockWrongDeposit",
+		name = "Block wrong-port deposits",
+		description = "Block 'Deposit' at a ledger when every crate you hold is for another port (with a chat message). Shift-click deposits anyway",
+		section = portSection,
+		position = 2
+	)
+	default boolean routingBlockWrongDeposit()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingBlockWrongDock",
+		name = "Block wrong-port docking",
+		description = "While holding a courier crate in hand: block docking at a port with nothing in your plan (chat + overhead warning), and warn while docked at one. Shift-click docks anyway",
+		section = portSection,
 		position = 3
+	)
+	default boolean routingBlockWrongDock()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingHighlightHold",
+		name = "Mark crates to take",
+		description = "In the cargo hold, tint the crates to take out (docked: for this port; at sea: for the next stop, if it has deliveries) and dim the rest",
+		section = portSection,
+		position = 4
+	)
+	default boolean routingHighlightHold()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingTakeColor",
+		name = "Crates-to-take colour",
+		description = "Tint for the crates to take out at this port",
+		section = portSection,
+		position = 5
+	)
+	default Color routingTakeColor()
+	{
+		return new Color(0, 255, 0);
+	}
+
+	@ConfigItem(
+		keyName = "highlightHelmMissingCargo",
+		name = "Helm: missing cargo",
+		description = "Outline your boat's helm with the number of crates still to pick up",
+		position = 6,
+		section = portSection
+	)
+	default boolean highlightHelmMissingCargo()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightGangplanks",
+		name = "Highlight gangplanks",
+		description = "Outline gangplanks in the world",
+		position = 7,
+		section = portSection
+	)
+	default boolean highlightGangplanks()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightGangplanksColor",
+		name = "Gangplank colour",
+		description = "Color used to outline gangplanks in the world",
+		position = 8,
+		section = portSection
+	)
+	default Color highlightGangplanksColor()
+	{
+		return Color.YELLOW;
+	}
+
+	@ConfigItem(
+		keyName = "highlightNoticeboards",
+		name = "Highlight notice boards",
+		description = "Outline noticeboards in the world",
+		position = 9,
+		section = portSection
+	)
+	default boolean highlightNoticeboards()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightNoticeboardsColor",
+		name = "Notice board colour",
+		description = "Color used to outline noticeboards in the world",
+		position = 10,
+		section = portSection
+	)
+	default Color highlightNoticeboardsColor()
+	{
+		return Color.RED;
+	}
+
+	@ConfigItem(
+		keyName = "highlightCargoHolds",
+		name = "Highlight cargo holds",
+		description = "Outline cargo holds in your boat",
+		position = 11,
+		section = portSection
+	)
+	default boolean highlightCargoHolds()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightCargoHoldsColor",
+		name = "Cargo hold colour",
+		description = "Color used to outline cargo holds in your boat",
+		position = 12,
+		section = portSection
+	)
+	default Color highlightCargoHoldsColor()
+	{
+		return Color.green;
+	}
+
+	// Each task's colour starts as its slot's colour here; it can be changed per task from the side panel.
+	String TASK_COLOUR_TIP = "Default colour for the task in this slot: its dock ledger tiles, helm outline and side-panel swatch (each task's own colour can be changed in the side panel)";
+
+	@ConfigItem(keyName = "navColor", name = "Task 1 colour", description = TASK_COLOUR_TIP, section = portSection, position = 13)
+	default Color getNavColor()
+	{
+		return new Color(201, 51, 255);
+	}
+
+	@ConfigItem(keyName = "navColor2", name = "Task 2 colour", description = TASK_COLOUR_TIP, section = portSection, position = 14)
+	default Color getNavColor2()
+	{
+		return new Color(255, 51, 105);
+	}
+
+	@ConfigItem(keyName = "navColor3", name = "Task 3 colour", description = TASK_COLOUR_TIP, section = portSection, position = 15)
+	default Color getNavColor3()
+	{
+		return new Color(255, 201, 51);
+	}
+
+	@ConfigItem(keyName = "navColor4", name = "Task 4 colour", description = TASK_COLOUR_TIP, section = portSection, position = 16)
+	default Color getNavColor4()
+	{
+		return new Color(105, 255, 51);
+	}
+
+	@ConfigItem(keyName = "navColor5", name = "Task 5 colour", description = TASK_COLOUR_TIP, section = portSection, position = 17)
+	default Color getNavColor5()
+	{
+		return new Color(51, 255, 201);
+	}
+
+	// ---------------------------------------------------------------- Panels
+
+	@ConfigSection(
+		name = "Panels",
+		description = "The next-stop panel and its sections",
+		position = 3
+	)
+	String panelsSection = "panelsSection";
+
+	@ConfigItem(
+		keyName = "routingNextStopPanel",
+		name = "Next stop panel",
+		description = "Show a small panel with the next stop and what to do there",
+		section = panelsSection,
+		position = 1
+	)
+	default boolean routingNextStopPanel()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingLegCounter", name = "Show tiles sailed",
+		description = "Next-stop panel: tiles and time for the leg under way, against the estimate, and the last leg",
+		section = panelsSection, position = 2)
+	default boolean routingLegCounter()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingBagCounts",
+		name = "Bag counts",
+		description = "In the route panel, count the port bags received this session by type and size",
+		section = panelsSection,
+		position = 3
+	)
+	default boolean routingBagCounts()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingLegColor",
+		name = "Accent colour",
+		description = "Panel titles, and the best task's badge and outline on the board",
+		section = panelsSection,
+		position = 4
+	)
+	default Color routingLegColor()
+	{
+		return new Color(0, 220, 255);
+	}
+
+	// ---------------------------------------------------------------- Bounty tasks
+
+	@ConfigSection(
+		name = "Bounty tasks",
+		description = "Configuration for bounty tasks.",
+		position = 4
+	)
+	String bountyTasks = "bountyTasksSection";
+
+	@ConfigItem(
+		keyName = "corpseOverlay",
+		name = "Corpse despawn timer",
+		description = "Draw an overlay for when the corpse despawns",
+		section = bountyTasks,
+		position = 1
+	)
+	default Despawn corpseOverlay()
+	{
+		return Despawn.PIE;
+	}
+
+	@ConfigItem(
+		keyName = "corpseOverlayNpcs",
+		name = "Corpse NPC overlay",
+		description = "Draw an overlay for all sailing NPCs or on-task only",
+		section = bountyTasks,
+		position = 2
+	)
+	default Npcs corpseOverlayNpcs()
+	{
+		return Npcs.TASK;
+	}
+
+	// ---------------------------------------------------------------- Board reset tracker
+
+	@ConfigSection(
+		name = "Board reset tracker",
+		description = "Configuration for notice board reset tracking.",
+		position = 5
 	)
 	String noticeBoardTracker = "noticeBoardTrackerSection";
 
@@ -420,385 +679,12 @@ public interface PortTasksConfig extends Config
 		keyName = "noticeBoardState",
 		name = "Tasks since reset",
 		description = "Number of tasks completed since board reset (0-7)",
-		position = 1,
+		position = 2,
 		section = noticeBoardTracker
 	)
 	default int noticeBoardState()
 	{
 		return 0;
-	}
-
-	@ConfigSection(
-		name = "Bounty Tasks",
-		description = "Configuration for bounty tasks.",
-		position = 4
-	)
-	String bountyTasks = "bountyTasksSection";
-
-	@ConfigItem(
-		keyName = "corpseOverlay",
-		name = "Corpse Despawn Timer",
-		description = "Draw an overlay for when the corpse despawns",
-		section = bountyTasks
-	)
-	default Despawn corpseOverlay()
-	{
-		return Despawn.PIE;
-	}
-
-	@ConfigItem(
-		keyName = "corpseOverlayNpcs",
-		name = "Corpse NPC Overlay",
-		description = "Draw an overlay for all sailing NPCs or on-task only",
-		section = bountyTasks
-	)
-	default Npcs corpseOverlayNpcs()
-	{
-		return Npcs.TASK;
-	}
-
-	@ConfigSection(
-		name = "Routing",
-		description = "Courier route planning (personal extension)",
-		position = 5
-	)
-	String routing = "routingSection";
-
-	@ConfigItem(
-		keyName = "routingEnabled",
-		name = "Plan stop order",
-		description = "Plan the best order of stops for your courier tasks and draw only the path to the next stop",
-		section = routing,
-		position = 0
-	)
-	default boolean routingEnabled()
-	{
-		return true;
-	}
-
-	@Range(max = 500)
-	@ConfigItem(
-		keyName = "routingStopCost",
-		name = "Stop cost (tiles)",
-		description = "How much one port stop costs, as tiles of sailing (docking, walking to the ledger, loading)",
-		section = routing,
-		position = 3
-	)
-	default int routingStopCost()
-	{
-		return 30;
-	}
-
-	@ConfigItem(
-		keyName = "routingEnd",
-		name = "Finish at",
-		description = "Where the route should end: anywhere, or the far end of your sweep",
-		section = routing,
-		position = 4
-	)
-	default RouteEnd routingEnd()
-	{
-		return RouteEnd.ANYWHERE;
-	}
-
-	@ConfigItem(
-		keyName = "routingWestOnly",
-		name = "Western ports only",
-		description = "Only plan tasks whose ports are all in the western region; others are listed as out of region",
-		section = routing,
-		position = 5
-	)
-	default boolean routingWestOnly()
-	{
-		return false;
-	}
-
-	@ConfigItem(
-		keyName = "routingUseShortestPath",
-		name = "Draw with Shortest Path",
-		description = "Let the Shortest Path plugin draw the route to the next stop (it paths at sea). It replaces any Shortest Path target you set yourself",
-		section = routing,
-		position = 1
-	)
-	default boolean routingUseShortestPath()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingNextStopPanel",
-		name = "Next stop panel",
-		description = "Show a small panel with the next stop and what to do there",
-		section = routing,
-		position = 7
-	)
-	default boolean routingNextStopPanel()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingCargoReminder",
-		name = "Cargo reminder",
-		description = "While docked where the plan has a pickup, show above your character which crates still need grabbing",
-		section = routing,
-		position = 8
-	)
-	default boolean routingCargoReminder()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingBlockWrongDeposit",
-		name = "Block wrong-port deposits",
-		description = "Block 'Deposit' at a ledger when every crate you hold is for another port (with a chat message). Shift-click deposits anyway",
-		section = routing,
-		position = 10
-	)
-	default boolean routingBlockWrongDeposit()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingBlockWrongDock",
-		name = "Block wrong-port docking",
-		description = "While holding a courier crate in hand: block docking at a port with nothing in your plan (chat + overhead warning), and warn while docked at one. Shift-click docks anyway",
-		section = routing,
-		position = 11
-	)
-	default boolean routingBlockWrongDock()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingHighlightHold",
-		name = "Mark crates to take",
-		description = "In the cargo hold, tint the crates to take out (docked: for this port; at sea: for the next stop, if it has deliveries) and dim the rest",
-		section = routing,
-		position = 12
-	)
-	default boolean routingHighlightHold()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingTakeColor",
-		name = "Crates-to-take colour",
-		description = "Tint for the crates to take out at this port",
-		section = routing,
-		position = 13
-	)
-	default Color routingTakeColor()
-	{
-		return new Color(0, 255, 0);
-	}
-
-	@ConfigItem(
-		keyName = "routingBagCounts",
-		name = "Bag counts",
-		description = "In the route panel, count the port bags received this session by type and size",
-		section = routing,
-		position = 9
-	)
-	default boolean routingBagCounts()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingLegColor",
-		name = "Next leg colour",
-		description = "Colour of the path to the next stop",
-		section = routing,
-		position = 6
-	)
-	default Color routingLegColor()
-	{
-		return new Color(0, 220, 255);
-	}
-
-	// Bag-size filter: a courier task whose bag size is switched off is dimmed on the board and left out of
-	// the ranking. Size follows from base XP; coin or reward bag is random (1 in 5 is a reward bag). Mirrored
-	// by the side panel's T/S/M/L/H boxes; keys are "routingBag" + BagSize.wikiName().
-	String BAG_FILTER_TIP = "Offer courier tasks that give a bag of this size (coin or reward: 1 in 5 is a reward bag). Also in the side panel";
-
-	@ConfigItem(keyName = "routingBagTiny", name = "Tiny bag tasks", description = BAG_FILTER_TIP, section = routing, position = 14)
-	default boolean routingBagTiny()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingBagSmall", name = "Small bag tasks", description = BAG_FILTER_TIP, section = routing, position = 15)
-	default boolean routingBagSmall()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingBagMedium", name = "Medium bag tasks", description = BAG_FILTER_TIP, section = routing, position = 16)
-	default boolean routingBagMedium()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingBagLarge", name = "Large bag tasks", description = BAG_FILTER_TIP, section = routing, position = 17)
-	default boolean routingBagLarge()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingBagHuge", name = "Huge bag tasks", description = BAG_FILTER_TIP, section = routing, position = 18)
-	default boolean routingBagHuge()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingRankBy",
-		name = "Rank board tasks by",
-		description = "Which metric ranks the tasks on a notice board (badges, highlight, side list)",
-		section = routing,
-		position = 20
-	)
-	default BoardScorer.RankBy routingRankBy()
-	{
-		return BoardScorer.RankBy.XP_PER_ADDED_TILE;
-	}
-
-	@ConfigItem(keyName = "routingShowAdded", name = "Show added tiles/stops", description = "Board tooltip: how much sailing and how many stops the task adds",
-		section = routing, position = 21)
-	default boolean routingShowAdded()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingShowXpPerTile", name = "Show XP per added tile", description = "Board tooltip: XP divided by the added cost",
-		section = routing, position = 22)
-	default boolean routingShowXpPerTile()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingShowValuePerTile", name = "Show value per added tile", description = "Board tooltip: expected bag value divided by the added cost",
-		section = routing, position = 23)
-	default boolean routingShowValuePerTile()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingShowRouteFit", name = "Show route fit", description = "Board tooltip: added cost as a share of doing the task on its own (0% = free ride)",
-		section = routing, position = 24)
-	default boolean routingShowRouteFit()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingShowPlanRate", name = "Show plan rate after", description = "Board tooltip: XP per tile of the whole plan if you take this task",
-		section = routing, position = 25)
-	default boolean routingShowPlanRate()
-	{
-		return false;
-	}
-
-	@ConfigItem(keyName = "routingShowBag", name = "Show bag", description = "Board tooltip: bag size and expected value",
-		section = routing, position = 26)
-	default boolean routingShowBag()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingShowDrops", name = "Show signature drops", description = "Board tooltip: the delivery port's special reward-bag items for this bag size",
-		section = routing, position = 27)
-	default boolean routingShowDrops()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingBoardBadges", name = "Board rank badges", description = "Show each offered task's rank on the board and highlight the best",
-		section = routing, position = 28)
-	default boolean routingBoardBadges()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "routingWantedItems",
-		name = "Wanted items",
-		description = "One item per line, optionally '= value' in coins (e.g. Crystal shard = 2000). Tasks that can give one are highlighted; a value replaces the item's alch value",
-		section = routing,
-		position = 29
-	)
-	default String routingWantedItems()
-	{
-		return "";
-	}
-
-	@ConfigItem(keyName = "routingWantedColor", name = "Wanted item colour", description = "Highlight for tasks that can give a wanted item",
-		section = routing, position = 30)
-	default Color routingWantedColor()
-	{
-		return new Color(255, 200, 0);
-	}
-
-	@ConfigItem(keyName = "routingDetourTint", name = "Tint board by detour",
-		description = "Tint each offered courier task by how much sailing it adds: pink = nothing, then green to red,"
-			+ " red = twice its own pickup-to-delivery distance (an out-and-back trip just for it)",
-		section = routing, position = 31)
-	default boolean routingDetourTint()
-	{
-		return true;
-	}
-
-	@Range(max = 100)
-	@ConfigItem(keyName = "routingDetourOpacity", name = "Detour tint opacity", description = "Opacity of the detour tint, 0-100%",
-		section = routing, position = 32)
-	default int routingDetourOpacity()
-	{
-		return 35;
-	}
-
-	@ConfigItem(keyName = "routingLearnLegs", name = "Learn leg lengths",
-		description = "Measure each leg you sail, dock to dock, and plan with the measured lengths instead of the hand-drawn paths."
-			+ " A leg over twice the current estimate counts as a detour and is ignored",
-		section = routing, position = 33)
-	default boolean routingLearnLegs()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingLegEstimate", name = "Learned length",
-		description = "Which of a leg's measurements (last 25) to plan with: your best run, or a typical one",
-		section = routing, position = 34)
-	default LegLearner.Estimate routingLegEstimate()
-	{
-		return LegLearner.Estimate.MINIMUM;
-	}
-
-	@ConfigItem(keyName = "routingLegCounter", name = "Show tiles sailed",
-		description = "Next-stop panel: tiles and time for the leg under way, against the estimate, and the last leg",
-		section = routing, position = 35)
-	default boolean routingLegCounter()
-	{
-		return true;
-	}
-
-	@ConfigItem(keyName = "routingForgetLegs", name = "Forget learned legs",
-		description = "Tick to delete every learned leg length and go back to the hand-drawn paths (unticks itself)",
-		section = routing, position = 36)
-	default boolean routingForgetLegs()
-	{
-		return false;
-	}
-
-	enum Overlay
-	{
-		NONE,
-		MAP,
-		WORLD,
-		BOTH
 	}
 
 	enum Despawn

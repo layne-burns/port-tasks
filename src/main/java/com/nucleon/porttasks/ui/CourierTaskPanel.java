@@ -27,7 +27,6 @@
 package com.nucleon.porttasks.ui;
 
 import com.nucleon.porttasks.CourierTask;
-import com.nucleon.porttasks.ui.adapters.HidePortTaskSlotOverlay;
 import com.nucleon.porttasks.ui.adapters.PortTaskSlotOverlayColor;
 import com.nucleon.porttasks.PortTasksPlugin;
 import com.nucleon.porttasks.enums.TaskReward;
@@ -67,8 +66,6 @@ public class CourierTaskPanel extends JPanel implements TaskPanel
 
 	private static final ImageIcon
 			BORDER_COLOR_ICON,
-			VISIBLE_ICON,
-			INVISIBLE_ICON,
 			ANCHOR,
 			BOAT,
 			DESTINATION,
@@ -78,7 +75,6 @@ public class CourierTaskPanel extends JPanel implements TaskPanel
 
 	public final JLabel
 			PortTaskOverlayColor = new JLabel(),
-			hidePortTaskSlotOverlay = new JLabel(),
 			cargoRemainingText = new JLabel(),
 			cargoLabel = new JLabel(),
 			destinationLabel = new JLabel(),
@@ -101,11 +97,7 @@ public class CourierTaskPanel extends JPanel implements TaskPanel
 		final BufferedImage borderImg = ImageUtil.loadImageResource(PortTasksPlugin.class, "border_color_icon.png");
 		BORDER_COLOR_ICON = new ImageIcon(ImageUtil.alphaOffset(borderImg, -100));
 
-		final BufferedImage visibleImg = ImageUtil.loadImageResource(PortTasksPlugin.class, "visible_icon.png");
-		VISIBLE_ICON = new ImageIcon(visibleImg);
 
-		final BufferedImage invisibleImg = ImageUtil.loadImageResource(PortTasksPlugin.class, "invisible_icon.png");
-		INVISIBLE_ICON = new ImageIcon(invisibleImg);
 
 		final BufferedImage boatImg = ImageUtil.loadImageResource(PortTasksPlugin.class, "boat.png");
 		BOAT = new ImageIcon(boatImg);
@@ -152,8 +144,6 @@ public class CourierTaskPanel extends JPanel implements TaskPanel
 		JPanel xpWrapper = new JPanel(new BorderLayout());
 		xpWrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-		JPanel hideOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 3, 3));
-		hideOverlay.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
 		PortTaskSlotContainer.setBorder(new EmptyBorder(0, 0, 0, 0));
 		PortTaskSlotContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -193,16 +183,12 @@ public class CourierTaskPanel extends JPanel implements TaskPanel
 
 		PortTaskInformationCenter.add(cargoRemainingText);
 
-		hidePortTaskSlotOverlay.setToolTipText((courierTask.isTracking() ? "Hide" : "Show") + " Courier Task");
-		hidePortTaskSlotOverlay.addMouseListener(new HidePortTaskSlotOverlay(hidePortTaskSlotOverlay, courierTask, this, plugin));
 
-		hideOverlay.add(hidePortTaskSlotOverlay);
 		taskName.setText(courierTask.getData().taskName);
 		taskName.setHorizontalAlignment(SwingConstants.CENTER);
 
 
 		nameWrapper.add(taskName, BorderLayout.CENTER);
-		nameWrapper.add(hideOverlay, BorderLayout.EAST);
 		nameWrapper.add(anchorLabel, BorderLayout.WEST);
 
 		JPanel portSlotWrapper = new JPanel();
@@ -232,7 +218,6 @@ public class CourierTaskPanel extends JPanel implements TaskPanel
 
 		add(portSlotWrapper);
 
-		updateVisibility();
 		updateColorIndicators();
 		updateImages(courierTask);
 
@@ -269,11 +254,6 @@ public class CourierTaskPanel extends JPanel implements TaskPanel
 	{
 		PortTaskOverlayColor.setBorder(new MatteBorder(0, 0, 3, 0, courierTask.getOverlayColor()));
 		PortTaskOverlayColor.setIcon(BORDER_COLOR_ICON);
-	}
-
-	public void updateVisibility()
-	{
-		hidePortTaskSlotOverlay.setIcon(courierTask.isTracking() ? VISIBLE_ICON : INVISIBLE_ICON);
 	}
 
 	private void updateImages(CourierTask courierTask)

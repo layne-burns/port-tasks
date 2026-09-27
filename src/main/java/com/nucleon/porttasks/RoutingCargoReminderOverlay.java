@@ -44,7 +44,7 @@ class RoutingCargoReminderOverlay extends Overlay
 	public Dimension render(Graphics2D graphics)
 	{
 		Player player = client.getLocalPlayer();
-		if (!config.routingEnabled() || player == null)
+		if (player == null)
 		{
 			return null;
 		}

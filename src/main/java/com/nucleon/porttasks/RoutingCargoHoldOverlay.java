@@ -41,7 +41,7 @@ class RoutingCargoHoldOverlay extends WidgetItemOverlay
 	@Override
 	public void renderItemOverlay(Graphics2D graphics, int itemId, WidgetItem widgetItem)
 	{
-		if (!config.routingEnabled() || !config.routingHighlightHold())
+		if (!config.routingHighlightHold())
 		{
 			return;
 		}

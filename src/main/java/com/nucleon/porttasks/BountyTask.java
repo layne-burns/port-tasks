@@ -43,7 +43,6 @@ public class BountyTask implements Task
 	private int slot;
 	private boolean taken; // accepted?
 	private int delivered;
-	private boolean tracking;
 	private boolean active;
 	private Color overlayColor;
 	public int itemsCollected;

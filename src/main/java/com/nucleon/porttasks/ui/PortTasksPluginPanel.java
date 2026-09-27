@@ -37,7 +37,6 @@ import com.nucleon.porttasks.PortTasksConfig;
 import com.nucleon.porttasks.PortTasksPlugin;
 import com.nucleon.porttasks.Task;
 import com.nucleon.porttasks.enums.PortLocation;
-import com.nucleon.porttasks.enums.PortPaths;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.ui.adapters.ReloadPortTasks;
@@ -55,7 +54,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.ImageIcon;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
@@ -63,7 +61,6 @@ import javax.swing.border.EmptyBorder;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -164,11 +161,6 @@ public class PortTasksPluginPanel extends PluginPanel
 			// setup panels border layout
 			add(northPanel, BorderLayout.NORTH);
 			add(centerPanel, BorderLayout.CENTER);
-
-			if (plugin.developerMode)
-			{
-				addDeveloperPanel();
-			}
 		}
 
 //		public void rebuild()
@@ -212,14 +204,14 @@ public class PortTasksPluginPanel extends PluginPanel
 				{
 					CourierTask courier = (CourierTask) task;
 					CourierTaskPanel full = new CourierTaskPanel(plugin, courier, clientThread, itemManager, courier.getSlot());
-					row = taskRow(full, full.hidePortTaskSlotOverlay, task, courier::getOverlayColor, "c" + courier.getData().getDbrow());
+					row = taskRow(full, courier::getOverlayColor, "c" + courier.getData().getDbrow());
 					courierSummary(row, courier);
 				}
 				else if (task instanceof BountyTask)
 				{
 					BountyTask bounty = (BountyTask) task;
 					BountyTaskPanel full = new BountyTaskPanel(plugin, bounty, clientThread, itemManager, client, bounty.getSlot());
-					row = taskRow(full, full.hidePortTaskSlotOverlay, task, bounty::getOverlayColor, "b" + bounty.getData().getDbrow());
+					row = taskRow(full, bounty::getOverlayColor, "b" + bounty.getData().getDbrow());
 					bountySummary(row, bounty);
 					bountyRows.put(bounty.getSlot(), new BountyRow(full, row));
 				}
@@ -328,9 +320,9 @@ public class PortTasksPluginPanel extends PluginPanel
 			}
 		}
 
-		private TaskRow taskRow(JPanel full, JLabel fullEye, Task task, Supplier<Color> colour, String key)
+		private TaskRow taskRow(JPanel full, Supplier<Color> colour, String key)
 		{
-			return new TaskRow(full, fullEye, task, colour, openRows.contains(key), open ->
+			return new TaskRow(full, colour, openRows.contains(key), open ->
 			{
 				if (open)
 				{
@@ -340,7 +332,7 @@ public class PortTasksPluginPanel extends PluginPanel
 				{
 					openRows.remove(key);
 				}
-			}, plugin);
+			});
 		}
 
 		private static void courierSummary(TaskRow row, CourierTask t)
@@ -407,30 +399,4 @@ public class PortTasksPluginPanel extends PluginPanel
 			}
 		}
 
-		private void addDeveloperPanel()
-		{
-			JPanel developerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-			developerPanel.setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
-			developerPanel.setBorder(new EmptyBorder(2, 2, 2, 2));
-
-			JComboBox<String> portPathDropdown = new JComboBox<>();
-			PortPaths[] paths = PortPaths.values();
-			Arrays.sort(paths, Comparator.comparing(Enum::name));
-
-			for (PortPaths path : paths)
-			{
-				portPathDropdown.addItem(path.name());
-			}
-			portPathDropdown.setFocusable(false);
-			portPathDropdown.setToolTipText("Developer actions");
-
-			portPathDropdown.addActionListener(e ->
-			{
-				String selected = (String) portPathDropdown.getSelectedItem();
-				plugin.setDeveloperPathSelected(PortPaths.valueOf(selected));
-			});
-
-			developerPanel.add(portPathDropdown);
-			add(developerPanel, BorderLayout.SOUTH);
-		}
 }

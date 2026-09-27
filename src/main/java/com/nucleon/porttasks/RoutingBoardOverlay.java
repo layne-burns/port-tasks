@@ -47,7 +47,7 @@ class RoutingBoardOverlay extends Overlay
 	{
 		boolean badges = config.routingBoardBadges();
 		boolean tint = config.routingDetourTint();
-		if (!config.routingEnabled() || !badges && !tint)
+		if (!badges && !tint)
 		{
 			return null;
 		}

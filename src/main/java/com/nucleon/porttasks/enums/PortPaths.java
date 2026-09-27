@@ -1,8 +1,6 @@
 package com.nucleon.porttasks.enums;
 
-import com.nucleon.porttasks.PortPathMatch;
 import com.nucleon.porttasks.RelativeMove;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -2504,78 +2502,20 @@ public enum PortPaths
 		this.pathPoints = List.of(pathPoints);
 		this.distance = computeDistance();
 	}
-	public static PortPathMatch findPath(PortLocation a, PortLocation b)
+	/** The drawn path between two ports, in either direction (DEFAULT if there is none). */
+	public static PortPaths findPath(PortLocation a, PortLocation b)
 	{
 		for (PortPaths p : values())
 		{
-			if (p.start == a && p.end == b)
+			if (p.start == a && p.end == b || p.start == b && p.end == a)
 			{
-				return new PortPathMatch(p, false);
-			}
-			if (p.start == b && p.end == a)
-			{
-				return new PortPathMatch(p, true);
+				return p;
 			}
 		}
 		log.info("Failed to find route between {} and {}", a, b);
-		return new PortPathMatch(DEFAULT, false);
+		return DEFAULT;
 	}
 
-	public List<WorldPoint> getFullPath()
-	{
-		List<WorldPoint> fullPath = new ArrayList<>();
-		WorldPoint current = start.getNavigationLocation();
-		fullPath.add(current);
-		for (RelativeMove delta : pathPoints)
-		{
-			List<RelativeMove> moves = splitMove(delta, 50); // List<RelativeMove> moves = List.of(delta); to remove segmentation
-			for (RelativeMove m : moves)
-			{
-				current = new WorldPoint(current.getX() + m.getDx(), current.getY() + m.getDy(), current.getPlane());
-				fullPath.add(current);
-			}
-		}
-		fullPath.add(end.getNavigationLocation());
-		return fullPath;
-	}
-	private List<RelativeMove> splitMove(RelativeMove delta, int segmentLength)
-	{
-		int dx = delta.getDx();
-		int dy = delta.getDy();
-		int steps = Math.max(
-				Math.abs(dx) / segmentLength + (Math.abs(dx) % segmentLength != 0 ? 1 : 0),
-				Math.abs(dy) / segmentLength + (Math.abs(dy) % segmentLength != 0 ? 1 : 0)
-		);
-
-		if (steps <= 1)
-			return List.of(delta);
-
-		List<RelativeMove> result = new ArrayList<>(steps);
-
-		int baseDx = dx / steps;
-		int baseDy = dy / steps;
-
-		int usedAbsDx = Math.abs(baseDx) * steps;
-		int usedAbsDy = Math.abs(baseDy) * steps;
-
-		int remDx = Math.abs(dx) - usedAbsDx;
-		int remDy = Math.abs(dy) - usedAbsDy;
-
-		int signDx = Integer.signum(dx);
-		int signDy = Integer.signum(dy);
-
-		for (int i = 0; i < steps; i++)
-		{
-			int extraDx = i < remDx ? signDx : 0;
-			int extraDy = i < remDy ? signDy : 0;
-
-			int addX = baseDx + extraDx;
-			int addY = baseDy + extraDy;
-
-			result.add(new RelativeMove(addX, addY));
-		}
-		return result;
-	}
 
 	private double computeDistance()
 	{

@@ -133,7 +133,7 @@ public class NoticeBoardTooltip extends Overlay
 	{
 		PortTasksConfig config = plugin.routingConfig();
 		BoardScorer.Score s = plugin.boardScore(data.getDbrow());
-		if (!config.routingEnabled() || s == null)
+		if (s == null)
 		{
 			return "";
 		}
@@ -142,10 +142,10 @@ public class NoticeBoardTooltip extends Overlay
 		if (config.routingShowAdded())
 		{
 			sb.append(String.format("<br>Adds: %+.0f tiles, %+d stop%s", s.addedTiles, s.addedStops, Math.abs(s.addedStops) == 1 ? "" : "s"));
-			if (Double.isFinite(s.detour))
-			{
-				sb.append(String.format(" (%s%.0f%%</col> of out-and-back)", toColTag(s.detourColor), s.detour * 100));
-			}
+		}
+		if (config.routingShowDetour() && Double.isFinite(s.detour))
+		{
+			sb.append(String.format("<br>Detour: %s%.0f%%</col> of out-and-back", toColTag(s.detourColor), s.detour * 100));
 		}
 		if (config.routingShowXpPerTile())
 		{

@@ -42,7 +42,6 @@ public class CourierTask implements Task
 	private int slot;
 	private boolean taken;
 	private int delivered;
-	private boolean tracking;
 	private boolean active;
 	private Color overlayColor;
 	private int cargoTaken;

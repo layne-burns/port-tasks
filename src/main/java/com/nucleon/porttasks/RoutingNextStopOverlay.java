@@ -133,7 +133,7 @@ class RoutingNextStopOverlay extends OverlayPanel
 	private boolean renderRoute()
 	{
 		RoutePlanner.Plan plan = plugin.routingService.plan();
-		if (!config.routingEnabled() || !config.routingNextStopPanel() || plan == null || plan.stops.isEmpty())
+		if (!config.routingNextStopPanel() || plan == null || plan.stops.isEmpty())
 		{
 			return false;
 		}

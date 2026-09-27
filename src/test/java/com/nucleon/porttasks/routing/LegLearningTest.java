@@ -122,11 +122,10 @@ public class LegLearningTest
 	// --- RouteGraph with learned legs
 
 	@Test
-	public void aLearnedLegReplacesTheDrawnDistanceAndDrawingIsUnchanged()
+	public void aLearnedLegReplacesTheDrawnDistance()
 	{
 		RouteGraph g = new RouteGraph();
 		double drawn = g.distance(SARIM, PANDEMONIUM);
-		List<WorldPoint> points = g.points(SARIM, PANDEMONIUM);
 		assertTrue(Double.isFinite(drawn));
 
 		LegLearner l = new LegLearner(null, new Gson(), json -> { });
@@ -134,7 +133,6 @@ public class LegLearningTest
 		g.setLearned(l.estimates(LegLearner.Estimate.MINIMUM));
 		assertEquals(drawn + 37, g.distance(SARIM, PANDEMONIUM), EPS);
 		assertEquals(drawn + 37, g.distance(PANDEMONIUM, SARIM), EPS);
-		assertEquals(points, g.points(SARIM, PANDEMONIUM));
 
 		g.setLearned(Collections.emptyList());
 		assertEquals(drawn, g.distance(SARIM, PANDEMONIUM), EPS);
