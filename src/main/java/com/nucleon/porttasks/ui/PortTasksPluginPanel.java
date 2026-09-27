@@ -163,38 +163,12 @@ public class PortTasksPluginPanel extends PluginPanel
 			add(centerPanel, BorderLayout.CENTER);
 		}
 
-//		public void rebuild()
-//		{
-//			markerView.removeAll();
-//			List<CourierTask> courierTasks = plugin.getCourierTasks();
-//			for (CourierTask courierTask : courierTasks)
-//			{
-//				markerView.add(new CourierTaskPanel(plugin, courierTask, clientThread, itemManager, courierTask.getSlot()));
-//				markerView.add(Box.createRigidArea(new Dimension(0, 10)));
-//			}
-//			List<BountyTask> bountyTasks = plugin.getBountyTasks();
-//
-//			for (BountyTask bountyTask : bountyTasks)
-//			{
-//				markerView.add(new BountyTaskPanel(plugin, bountyTask, clientThread, itemManager, bountyTask.getSlot()));
-//				markerView.add(Box.createRigidArea(new Dimension(0, 10)));
-//			}
-//
-//			if (courierTasks.isEmpty() || bountyTasks.isEmpty())
-//			{
-//				setupErrorPanel(true);
-//			}
-//			repaint();
-//			revalidate();
-//		}
-
-		public void rebuild()
+		/** Shows these tasks (a copy the caller made on the client thread). Swing thread only. */
+		public void rebuild(List<Task> tasks)
 		{
 			markerView.removeAll();
 			bountyRows.clear();
-			List<Task> allTasks = new ArrayList<>();
-			allTasks.addAll(plugin.getCourierTasks());
-			allTasks.addAll(plugin.getBountyTasks());
+			List<Task> allTasks = new ArrayList<>(tasks);
 			allTasks.sort(Comparator.comparingInt(Task::getSlot));
 			for (Task task : allTasks)
 			{

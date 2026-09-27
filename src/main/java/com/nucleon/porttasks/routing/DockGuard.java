@@ -46,8 +46,9 @@ public final class DockGuard
 		{
 			return false;
 		}
-		log.info("[routing] boat click: '{}' on '{}' (id {})", Text.removeTags(option), Text.removeTags(target), objectId);
-		if (o.contains("dock"))
+		log.debug("[routing] boat click: '{}' on '{}' (id {})", Text.removeTags(option), Text.removeTags(target), objectId);
+		// Leaving a port must never be blocked, whatever the option is called.
+		if (o.contains("dock") && !o.contains("undock"))
 		{
 			return true;
 		}

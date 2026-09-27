@@ -117,8 +117,12 @@ public final class BoardScorer
 		this.config = config;
 	}
 
-	/** Scores every offered courier task not already held, ranked by the configured metric. */
-	public List<Score> score(List<CourierTask> held, PortLocation start, Collection<CourierTaskData> offered)
+	/**
+	 * Scores every offered courier task not already held, ranked by the configured metric. Tasks above
+	 * {@code sailingLevel} (0 = unknown: no check) or filtered out by bag size are left out: they can't or
+	 * shouldn't be taken.
+	 */
+	public List<Score> score(List<CourierTask> held, PortLocation start, Collection<CourierTaskData> offered, int sailingLevel)
 	{
 		PortLocation end = config.routingEnd().port();
 		double stopCost = config.routingStopCost();
@@ -146,7 +150,7 @@ public final class BoardScorer
 		List<Score> scores = new ArrayList<>();
 		for (CourierTaskData d : offered)
 		{
-			if (heldIds.contains(d.getId()) || !passesBagFilter(d))
+			if (heldIds.contains(d.getId()) || !passesBagFilter(d) || sailingLevel > 0 && d.getLevelRequired() > sailingLevel)
 			{
 				continue;
 			}

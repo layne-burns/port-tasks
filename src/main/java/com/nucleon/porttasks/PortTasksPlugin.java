@@ -256,7 +256,12 @@ public class PortTasksPlugin extends Plugin
 	private static final String ICON_FILE = "icon.png";
 	public static final String CONFIG_GROUP = "porttasks";
 	private static final String CONFIG_KEY_LEGS = "routingLearnedLegs";
-	private static final String CONFIG_KEY = "porttaskslots";
+	private static final String CONFIG_KEY_TASK_COLOURS = "taskColours";
+	/** Task -> colour picked for it in the side panel (RGB); see taskColourKey. Kept in the profile. */
+	private static final class TaskColours extends HashMap<String, Integer>
+	{
+	}
+	private final TaskColours taskColours = new TaskColours();
 	private static final String CONFIG_KEY_TAGS = "task_tags";
 	private static final String CONFIG_KEY_TASKS_COMPLETED = "tasks_completed";
 	private static final String CONFIG_KEY_LAST_TASK_COMPLETED = "last_task_completed";
@@ -376,6 +381,7 @@ public class PortTasksPlugin extends Plugin
 		migrateOnlyBigBags();
 		CourierWikiData courierWikiData = CourierWikiData.load(gson);
 		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
+		loadTaskColours();
 		legLearner = new LegLearner(configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_LEGS), gson, json ->
 		{
 			if (json == null)
@@ -399,6 +405,8 @@ public class PortTasksPlugin extends Plugin
 			if (client.getGameState() == GameState.LOGGED_IN)
 			{
 				lastMoveMode = client.getVarbitValue(VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE);
+				// Otherwise only set by the next Sailing XP drop: until then "Hide incompletable" hid every task.
+				sailingLevel = client.getRealSkillLevel(Skill.SAILING);
 			}
 		});
 		routingDiagnostics = new RoutingDiagnostics(client, courierWikiData, rewardValuer, boatLocator, xpLearner);
@@ -415,7 +423,7 @@ public class PortTasksPlugin extends Plugin
 
 		clientToolbar.addNavigation(navigationButton);
 		registerOverlays();
-		pluginPanel.rebuild();
+		refreshPanel();
 
 		loadWidgetTags();
 		overlayManager.add(taskHighlight);
@@ -527,6 +535,7 @@ public class PortTasksPlugin extends Plugin
 				{
 					overlayManager.add(despawnTimerOverlay);
 				}
+				return;
 			case "highlightGangplanks":
 				highlightGangplanks = config.highlightGangplanks();
 				return;
@@ -1156,7 +1165,7 @@ public class PortTasksPlugin extends Plugin
 		}
 		PortLocation board = offered.get(0).getNoticeBoard();
 		PortLocation start = routingService.boatPort() != null ? routingService.boatPort() : board;
-		List<BoardScorer.Score> ranked = boardScorer.score(courierTasks, start, offered);
+		List<BoardScorer.Score> ranked = boardScorer.score(courierTasks, start, offered, sailingLevel);
 		Map<Integer, BoardScorer.Score> byDbrow = new HashMap<>();
 		List<PortTasksPluginPanel.BoardRow> rows = new ArrayList<>();
 		BoardScorer.RankBy by = config.routingRankBy();
@@ -1324,26 +1333,30 @@ public class PortTasksPlugin extends Plugin
 		{
 			case ID:
 				log.debug("Changed: {} (value {})", trigger, value);
+				// One task per slot: a new id replaces whatever the slot held (the id can change without passing
+				// through 0, e.g. when varbits are re-sent at login).
+				removeTasksForSlot(slot);
 				if (value == 0)
 				{
-					removeTasksForSlot(slot);
-					pluginPanel.rebuild();
+					refreshPanel();
 					return;
 				}
 				CourierTaskData courrierData = CourierTaskData.fromId(value);
 				if (courrierData != null)
 				{
-					courierTasks.add(new CourierTask(courrierData, slot, false, 0, true, getNavColorForSlot(trigger.getSlot()), 0));
+					// Progress varbits may arrive before the id at login, when there was no task to apply them to.
+					courierTasks.add(new CourierTask(courrierData, slot, false, slotVarbit(slot, PortTaskTrigger.TaskType.DELIVERED),
+						true, taskColour(slot, courrierData.getDbrow()), slotVarbit(slot, PortTaskTrigger.TaskType.TAKEN)));
 					routingDiagnostics.logTask(slot, courrierData);
-					pluginPanel.rebuild();
+					refreshPanel();
 					return;
 				}
 
 				BountyTaskData bountyData = BountyTaskData.fromId(value);
 				if (bountyData != null)
 				{
-					bountyTasks.add(new BountyTask(bountyData, slot, false, 0, true, getNavColorForSlot(slot), 0));
-					pluginPanel.rebuild();
+					bountyTasks.add(new BountyTask(bountyData, slot, false, 0, true, taskColour(slot, bountyData.getDbrow()), 0));
+					refreshPanel();
 				}
 				return;
 
@@ -1353,7 +1366,7 @@ public class PortTasksPlugin extends Plugin
 					if (task.getSlot() == slot)
 					{
 						task.setCargoTaken(value);
-						pluginPanel.rebuild();
+						refreshPanel();
 						return;
 					}
 				}
@@ -1370,7 +1383,7 @@ public class PortTasksPlugin extends Plugin
 							xpLearner.expectCompletion(task.getData().getId(), client.getTickCount());
 							bagCounter.onTaskCompleted(client.getTickCount());
 						}
-						pluginPanel.rebuild();
+						refreshPanel();
 						return;
 					}
 				}
@@ -1386,12 +1399,36 @@ public class PortTasksPlugin extends Plugin
 						int collected = Math.max(0, Math.min(required, required - remaining));
 
 						task.setItemsCollected(collected);
-						pluginPanel.updateBountyPanel(task);
+						SwingUtilities.invokeLater(() -> pluginPanel.updateBountyPanel(task));
 						return;
 					}
 				}
 				return;
 		}
+	}
+
+	/** The current value of one of a slot's task varbits. */
+	private int slotVarbit(int slot, PortTaskTrigger.TaskType type)
+	{
+		for (PortTaskTrigger t : PortTaskTrigger.values())
+		{
+			if (t.getSlot() == slot && t.getType() == type)
+			{
+				return client.getVarbitValue(t.getId());
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * Rebuilds the side panel on the Swing thread (task events arrive on the client thread, and Swing must only
+	 * be touched from its own), from a copy of the task lists so the client thread can keep changing them.
+	 */
+	private void refreshPanel()
+	{
+		List<Task> tasks = new ArrayList<>(courierTasks);
+		tasks.addAll(bountyTasks);
+		SwingUtilities.invokeLater(() -> pluginPanel.rebuild(tasks));
 	}
 
 	private void removeTasksForSlot(int slot)
@@ -1438,15 +1475,73 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.add(portTaskModelRenderer);
 	}
 
+	/**
+	 * Saves the colours of the tasks held now (called when a colour is picked in the side panel). Only held
+	 * tasks are kept, so a finished task's colour doesn't outlive it.
+	 */
 	public void saveSlotSettings()
 	{
-		if (courierTasks == null || courierTasks.isEmpty())
+		taskColours.clear();
+		for (CourierTask t : courierTasks)
 		{
-			configManager.unsetConfiguration(CONFIG_GROUP, CONFIG_KEY);
+			putTaskColour(t.getSlot(), t.getData().getDbrow(), t.getOverlayColor());
+		}
+		for (BountyTask t : bountyTasks)
+		{
+			putTaskColour(t.getSlot(), t.getData().getDbrow(), t.getOverlayColor());
+		}
+		if (taskColours.isEmpty())
+		{
+			configManager.unsetConfiguration(CONFIG_GROUP, CONFIG_KEY_TASK_COLOURS);
+		}
+		else
+		{
+			configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_TASK_COLOURS, gson.toJson(taskColours));
+		}
+	}
+
+	private void putTaskColour(int slot, int dbrow, Color colour)
+	{
+		// Only colours that differ from the slot's default need remembering.
+		if (colour != null && !colour.equals(getNavColorForSlot(slot)))
+		{
+			taskColours.put(taskColourKey(slot, dbrow), colour.getRGB());
+		}
+	}
+
+	private void loadTaskColours()
+	{
+		taskColours.clear();
+		String json = configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_TASK_COLOURS);
+		if (json == null)
+		{
 			return;
 		}
-		String json = gson.toJson(courierTasks);
-		configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY, json);
+		try
+		{
+			TaskColours stored = gson.fromJson(json, TaskColours.class);
+			if (stored != null)
+			{
+				taskColours.putAll(stored);
+			}
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("task colours unreadable; using slot colours", e);
+		}
+	}
+
+	/** A task's colour: the one picked for this task in this slot, else the slot's default. */
+	private Color taskColour(int slot, int dbrow)
+	{
+		Integer rgb = taskColours.get(taskColourKey(slot, dbrow));
+		return rgb != null ? new Color(rgb, true) : getNavColorForSlot(slot);
+	}
+
+	/** Slot and task together: a new task taken into the slot starts from the slot's colour again. */
+	private static String taskColourKey(int slot, int dbrow)
+	{
+		return slot + ":" + dbrow;
 	}
 
 	private Color getNavColorForSlot(int slot)
@@ -1501,7 +1596,7 @@ public class PortTasksPlugin extends Plugin
 	private static final String[] REMOVED_KEYS = {
 		"drawOverlay", "pathOffset", "pathDrawDistance",
 		"enableTracer", "tracerSpeed", "tracerIntensity", "highlightTaskItems", "routingEnabled", "routingUseShortestPath",
-		"routingWestOnly",
+		"routingWestOnly", "porttaskslots",
 	};
 
 	private void migrateConfiguration()

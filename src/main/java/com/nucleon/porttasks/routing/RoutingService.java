@@ -193,7 +193,7 @@ public final class RoutingService
 			target = config.routingEnd().port();
 		}
 		updateShortestPath(start, target);
-		log.info("[routing] from {}: {}", start.getName(), plan);
+		log.debug("[routing] from {}: {}", start.getName(), plan);
 	}
 
 	public void clear()
@@ -242,7 +242,7 @@ public final class RoutingService
 			data.put("config", SHORTEST_PATH_SAILING);
 			eventBus.post(new PluginMessage(SHORTEST_PATH, "path", data));
 		}
-		log.info("[routing] Shortest Path leg: {} -> {}", start, target);
+		log.debug("[routing] Shortest Path leg: {} -> {}", start, target);
 		shortestPathStart = start;
 		shortestPathTarget = target;
 	}

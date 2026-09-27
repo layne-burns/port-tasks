@@ -53,7 +53,7 @@ public final class RoutingDiagnostics
 		int pluginXp = TaskReward.getIntRewardForTask(d.getDbrow());
 		if (w == null)
 		{
-			log.info("[routing] slot {} task id {} (dbrow {}) '{}': NOT in wiki data; plugin XP {}",
+			log.debug("[routing] slot {} task id {} (dbrow {}) '{}': NOT in wiki data; plugin XP {}",
 				slot, d.getId(), d.getDbrow(), d.taskName, pluginXp);
 			return;
 		}
@@ -62,7 +62,7 @@ public final class RoutingDiagnostics
 			&& w.destination.equals(d.getDeliveryLocation().getName());
 		Integer baseXp = xp.xp(d.getId());
 		String value = baseXp == null ? "?" : String.format("%.0f", valuer.expectedTaskValue(baseXp, w.destination));
-		log.info("[routing] slot {} task id {} (dbrow {}): plugin '{}' / wiki '{}' names {} | {} -> {} ports {} | "
+		log.debug("[routing] slot {} task id {} (dbrow {}): plugin '{}' / wiki '{}' names {} | {} -> {} ports {} | "
 				+ "crates plugin {} wiki {} | XP plugin {} wiki {} used {} | bag {} | expected value {} gp",
 			slot, d.getId(), d.getDbrow(), d.taskName, w.name, namesMatch ? "match" : "DIFFER",
 			w.cargoPort, w.destination, portsMatch ? "match" : "DIFFER (plugin " + d.getCargoLocation() + " -> " + d.getDeliveryLocation() + ")",
@@ -75,7 +75,7 @@ public final class RoutingDiagnostics
 		PortLocation near = nearestPort();
 		PortLocation asDock = boats.portForDockId(value);
 		PortLocation boat = boats.boatPort();
-		log.info("[routing] {} = {} (as dock id: {}) | boat slot {} at {} | player nearest port: {}",
+		log.debug("[routing] {} = {} (as dock id: {}) | boat slot {} at {} | player nearest port: {}",
 			name, value, asDock == null ? "none" : asDock.getName(), boats.currentBoatSlot(),
 			boat == null ? "?" : boat.getName(), near == null ? "?" : near.getName());
 	}
