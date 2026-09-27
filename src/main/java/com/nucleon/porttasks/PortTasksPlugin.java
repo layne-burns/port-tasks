@@ -99,6 +99,7 @@ import net.runelite.api.events.WorldViewUnloaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -176,6 +177,14 @@ public class PortTasksPlugin extends Plugin
 	boolean lastLegKept;
 	/** The boat's move mode as last seen; a leg starts when it leaves "docked". */
 	private int lastMoveMode = -1;
+	/**
+	 * Ticks after logging in or hopping during which boat-state changes are ignored: the game re-sends the
+	 * boat's varbits then, which can look like leaving or reaching a dock.
+	 */
+	private int settleTicks;
+	private static final int SETTLE_TICKS = 3;
+	/** How near its dock the boat must be for leaving it to start a leg. */
+	private static final int DEPART_RADIUS = 40;
 	private DepositGuard depositGuard;
 	private DockGuard dockGuard;
 	/** A short-lived warning to show above the player (e.g. a blocked dock), and the tick it expires. */
@@ -743,8 +752,12 @@ public class PortTasksPlugin extends Plugin
 		{
 			// Shortest Path may drop its path here; make the next plan re-send the leg.
 			routingService.resetShortestPath();
-			// A leg interrupted by a logout or hop can't be measured.
-			legTracker.cancel();
+			// Keep the leg under way; just don't count across the gap.
+			legTracker.pause();
+		}
+		if (state == GameState.LOGGED_IN)
+		{
+			settleTicks = SETTLE_TICKS;
 		}
 		switch (state)
 		{
@@ -1028,9 +1041,17 @@ public class PortTasksPlugin extends Plugin
 	{
 		// Routing extension: while a leg is under way, one boat position per tick (there is no event for the
 		// boat moving), and the leg ends on the first tick the boat is docked. Nothing is done otherwise.
-		if (legTracker.active())
+		if (settleTicks > 0)
 		{
-			if (boatLocator.dockedOnBoat())
+			settleTicks--;
+		}
+		else if (legTracker.active())
+		{
+			if (!boatLocator.onBoat())
+			{
+				legTracker.cancel(); // left the boat mid-leg
+			}
+			else if (boatLocator.dockedOnBoat())
 			{
 				finishLeg();
 			}
@@ -1473,27 +1494,32 @@ public class PortTasksPlugin extends Plugin
 		return boardScores.get(dbrow);
 	}
 
-	/** Routing extension: a leg starts when the boat leaves a dock with the player on board. */
+	/**
+	 * Routing extension: a leg starts when the boat leaves a dock with the player on board. Not while settling
+	 * after a login or hop, not while a leg is already under way, and only beside the dock it left, so a
+	 * re-sent varbit can't start a leg mid-sea.
+	 */
 	private void onMoveModeChanged(int mode)
 	{
 		boolean wasDocked = lastMoveMode == BoatLocator.MOVE_MODE_DOCKED;
 		lastMoveMode = mode;
-		if (!wasDocked || mode == BoatLocator.MOVE_MODE_DOCKED || !boatLocator.onBoat()
-			|| !config.routingLearnLegs() && !config.routingLegCounter())
+		if (!wasDocked || mode == BoatLocator.MOVE_MODE_DOCKED || settleTicks > 0 || legTracker.active()
+			|| !boatLocator.onBoat() || !config.routingLearnLegs() && !config.routingLegCounter())
 		{
 			return;
 		}
 		PortLocation from = boatLocator.boatPort();
-		if (from != null)
+		WorldPoint boat = boatLocator.boatWorldPoint();
+		if (from != null && boat != null && from.getNavigationLocation().distanceTo2D(boat) <= DEPART_RADIUS)
 		{
-			legTracker.start(from, client.getTickCount());
+			legTracker.start(from);
 		}
 	}
 
 	/** Routing extension: the boat docked; learn the leg if it reached another port, and re-plan with it. */
 	private void finishLeg()
 	{
-		LegTracker.Leg leg = legTracker.finish(boatLocator.boatPort(), client.getTickCount());
+		LegTracker.Leg leg = legTracker.finish(boatLocator.boatPort());
 		if (leg == null)
 		{
 			return;
@@ -1521,10 +1547,10 @@ public class PortTasksPlugin extends Plugin
 		updateBestXpPerTile();
 	}
 
-	/** Routing extension: ticks since the current leg started. */
+	/** Routing extension: ticks spent sailing on the current leg. */
 	int legTicks()
 	{
-		return legTracker.ticks(client.getTickCount());
+		return legTracker.ticks();
 	}
 
 	/** Routing extension: the side panel's bag-size boxes write the config through here. */

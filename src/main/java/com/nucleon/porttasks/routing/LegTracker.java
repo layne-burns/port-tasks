@@ -6,12 +6,13 @@ import net.runelite.api.coords.WorldPoint;
 /**
  * Measures the leg being sailed, from leaving one port's dock to docking at the next: the tiles the boat
  * covers (sum of the straight-line moves between game ticks, the same measure as Port Tasks' drawn paths)
- * and the ticks it takes.
+ * and the ticks spent sailing.
  *
- * The start is event-driven (the boat's move mode leaving "docked"). While a leg is under way the plugin
- * feeds one boat position per game tick; there is no event for the boat moving, and one subtraction per
- * tick is all it costs. The leg is dropped if the boat jumps (a teleport), the player leaves the boat, or
- * they log out or hop. Client thread only.
+ * The start is event-driven (the boat's move mode leaving "docked", beside that port's dock). While a leg is
+ * under way the plugin feeds one boat position per game tick; there is no event for the boat moving, and one
+ * subtraction per tick is all it costs. A logout or world hop pauses the leg: no distance is counted across
+ * the gap and the time logged out isn't counted, and the leg carries on afterwards. The leg is dropped if the
+ * boat jumps (a teleport) or the player leaves the boat. Client thread only.
  */
 public final class LegTracker
 {
@@ -36,8 +37,9 @@ public final class LegTracker
 	static final double MAX_TILES_PER_TICK = 20;
 
 	private PortLocation from;
-	private int startTick;
 	private double tiles;
+	/** Ticks with a boat position while under way. */
+	private int ticks;
 	private WorldPoint last;
 
 	public boolean active()
@@ -46,24 +48,22 @@ public final class LegTracker
 	}
 
 	/** The boat left this port's dock. */
-	public void start(PortLocation from, int tick)
+	public void start(PortLocation from)
 	{
 		this.from = from;
-		startTick = tick;
 		tiles = 0;
+		ticks = 0;
 		last = null;
 	}
 
-	/** The boat's position this tick, or null if the player isn't on it (which drops the leg). */
+	/**
+	 * The boat's position this tick. Null when it can't be read (e.g. while logging in) just skips the tick;
+	 * the plugin cancels the leg if the player has really left the boat.
+	 */
 	public void sample(WorldPoint boat)
 	{
-		if (!active())
+		if (!active() || boat == null)
 		{
-			return;
-		}
-		if (boat == null)
-		{
-			cancel();
 			return;
 		}
 		if (last != null)
@@ -76,16 +76,23 @@ public final class LegTracker
 			}
 			tiles += d;
 		}
+		ticks++;
 		last = boat;
+	}
+
+	/** A logout or world hop: keep the leg, but don't count the distance or time across the gap. */
+	public void pause()
+	{
+		last = null;
 	}
 
 	/**
 	 * The boat docked at this port (null for a mooring point or unknown dock). Returns the leg, or null if it
 	 * can't be used (no port, or back where it started); either way tracking stops.
 	 */
-	public Leg finish(PortLocation to, int tick)
+	public Leg finish(PortLocation to)
 	{
-		Leg leg = to == null || to == from ? null : new Leg(from, to, tiles, tick - startTick);
+		Leg leg = to == null || to == from ? null : new Leg(from, to, tiles, ticks);
 		cancel();
 		return leg;
 	}
@@ -95,6 +102,7 @@ public final class LegTracker
 		from = null;
 		last = null;
 		tiles = 0;
+		ticks = 0;
 	}
 
 	/** The port the current leg started from, or null if none is under way. */
@@ -108,8 +116,9 @@ public final class LegTracker
 		return tiles;
 	}
 
-	public int ticks(int now)
+	/** Ticks spent sailing on this leg so far. */
+	public int ticks()
 	{
-		return now - startTick;
+		return ticks;
 	}
 }

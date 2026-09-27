@@ -33,14 +33,14 @@ public class LegLearningTest
 	public void trackerSumsStraightLineMoves()
 	{
 		LegTracker t = new LegTracker();
-		t.start(SARIM, 100);
+		t.start(SARIM);
 		t.sample(new WorldPoint(0, 0, 0));
 		t.sample(new WorldPoint(3, 4, 0));
 		t.sample(new WorldPoint(3, 10, 0));
 		assertEquals(11, t.tiles(), EPS);
-		LegTracker.Leg l = t.finish(PANDEMONIUM, 130);
+		LegTracker.Leg l = t.finish(PANDEMONIUM);
 		assertEquals(11, l.tiles, EPS);
-		assertEquals(30, l.ticks);
+		assertEquals(3, l.ticks);
 		assertFalse(t.active());
 	}
 
@@ -48,19 +48,34 @@ public class LegLearningTest
 	public void trackerDropsTeleportsLeavingTheBoatAndRoundTrips()
 	{
 		LegTracker t = new LegTracker();
-		t.start(SARIM, 0);
+		t.start(SARIM);
 		t.sample(new WorldPoint(0, 0, 0));
 		t.sample(new WorldPoint(0, (int) LegTracker.MAX_TILES_PER_TICK + 1, 0));
 		assertFalse("a jump ends the leg", t.active());
 
-		t.start(SARIM, 0);
-		t.sample(null);
-		assertFalse("leaving the boat ends the leg", t.active());
+		t.start(SARIM);
+		assertNull("back at the same port", t.finish(SARIM));
+		t.start(SARIM);
+		assertNull("a mooring point", t.finish(null));
+	}
 
-		t.start(SARIM, 0);
-		assertNull("back at the same port", t.finish(SARIM, 10));
-		t.start(SARIM, 0);
-		assertNull("a mooring point", t.finish(null, 10));
+	@Test
+	public void aLogoutPausesTheLegInsteadOfEndingIt()
+	{
+		LegTracker t = new LegTracker();
+		t.start(SARIM);
+		t.sample(new WorldPoint(0, 0, 0));
+		t.sample(new WorldPoint(0, 10, 0));
+		t.pause();
+		// While logging in the boat can't be read; that tick is skipped, not the leg.
+		t.sample(null);
+		assertTrue(t.active());
+		// Back in, a little further on: nothing counted across the gap, then counting carries on.
+		t.sample(new WorldPoint(0, 15, 0));
+		t.sample(new WorldPoint(0, 25, 0));
+		LegTracker.Leg l = t.finish(PANDEMONIUM);
+		assertEquals(20, l.tiles, EPS);
+		assertEquals(4, l.ticks);
 	}
 
 	// --- LegLearner
