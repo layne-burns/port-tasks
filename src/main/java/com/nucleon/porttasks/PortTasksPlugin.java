@@ -1160,16 +1160,17 @@ public class PortTasksPlugin extends Plugin
 		PortLocation start = routingService.boatPort() != null ? routingService.boatPort() : board;
 		List<BoardScorer.Score> ranked = boardScorer.score(courierTasks, start, offered);
 		Map<Integer, BoardScorer.Score> byDbrow = new HashMap<>();
-		List<String[]> rows = new ArrayList<>();
+		List<PortTasksPluginPanel.BoardRow> rows = new ArrayList<>();
 		BoardScorer.RankBy by = config.routingRankBy();
 		for (BoardScorer.Score s : ranked)
 		{
 			byDbrow.put(s.dbrow, s);
-			rows.add(new String[]{Integer.toString(s.rank), s.name, rankValue(s, by), String.join(", ", s.wantedDrops)});
+			CourierTaskData d = CourierTaskData.getByDbrow(s.dbrow);
+			rows.add(new PortTasksPluginPanel.BoardRow(s.rank, d.getCargoLocation(), d.getDeliveryLocation(), s.name,
+				rankValue(s, by), String.join(", ", s.wantedDrops), s.detourColor));
 		}
 		boardScores = byDbrow;
-		String boardName = board.getName();
-		SwingUtilities.invokeLater(() -> pluginPanel.showBoard(boardName, by.toString(), rows));
+		SwingUtilities.invokeLater(() -> pluginPanel.showBoard(board, by.toString(), rows));
 	}
 
 	private static String rankValue(BoardScorer.Score s, BoardScorer.RankBy by)
@@ -1177,13 +1178,13 @@ public class PortTasksPlugin extends Plugin
 		switch (by)
 		{
 			case VALUE_PER_ADDED_TILE:
-				return String.format("%.0f gp/tile", s.valuePerAddedTile);
+				return String.format("%.0f gp", s.valuePerAddedTile);
 			case ROUTE_FIT:
-				return String.format("%.0f%% new", s.routeFit * 100);
+				return String.format("%.0f%%", s.routeFit * 100);
 			case PLAN_RATE_AFTER:
-				return String.format("%.2f xp/tile", s.planRateAfter);
+				return String.format("%.1f", s.planRateAfter);
 			default:
-				return String.format("%.2f xp/tile", s.xpPerAddedTile);
+				return String.format("%.1f", s.xpPerAddedTile);
 		}
 	}
 

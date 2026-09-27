@@ -36,6 +36,7 @@ import com.nucleon.porttasks.CourierTask;
 import com.nucleon.porttasks.PortTasksConfig;
 import com.nucleon.porttasks.PortTasksPlugin;
 import com.nucleon.porttasks.Task;
+import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.enums.PortPaths;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
@@ -45,6 +46,7 @@ import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.util.ImageUtil;
@@ -64,8 +66,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Supplier;
 
 
 public class PortTasksPluginPanel extends PluginPanel
@@ -79,6 +85,9 @@ public class PortTasksPluginPanel extends PluginPanel
 		private final JPanel boardView = new JPanel();
 		// Routing extension: one box per bag size, mirroring the bag-filter config toggles.
 		private final Map<BagSize, JCheckBox> bagBoxes = new EnumMap<>(BagSize.class);
+		// Routing extension: which task rows are open ("c"/"b" + task dbrow), kept across rebuilds.
+		private final Set<String> openRows = new HashSet<>();
+		private final Map<Integer, BountyRow> bountyRows = new HashMap<>();
 		private ClientThread clientThread;
 		private ItemManager itemManager;
 		private Client client;
@@ -190,23 +199,35 @@ public class PortTasksPluginPanel extends PluginPanel
 		public void rebuild()
 		{
 			markerView.removeAll();
+			bountyRows.clear();
 			List<Task> allTasks = new ArrayList<>();
 			allTasks.addAll(plugin.getCourierTasks());
 			allTasks.addAll(plugin.getBountyTasks());
 			allTasks.sort(Comparator.comparingInt(Task::getSlot));
 			for (Task task : allTasks)
 			{
+				// Routing extension: each task is one line; clicking it opens the original panel below.
+				TaskRow row = null;
 				if (task instanceof CourierTask)
 				{
 					CourierTask courier = (CourierTask) task;
-					markerView.add(new CourierTaskPanel(plugin, courier, clientThread, itemManager, courier.getSlot()));
+					CourierTaskPanel full = new CourierTaskPanel(plugin, courier, clientThread, itemManager, courier.getSlot());
+					row = taskRow(full, full.hidePortTaskSlotOverlay, task, courier::getOverlayColor, "c" + courier.getData().getDbrow());
+					courierSummary(row, courier);
 				}
 				else if (task instanceof BountyTask)
 				{
 					BountyTask bounty = (BountyTask) task;
-					markerView.add(new BountyTaskPanel(plugin, bounty, clientThread, itemManager, client, bounty.getSlot()));
+					BountyTaskPanel full = new BountyTaskPanel(plugin, bounty, clientThread, itemManager, client, bounty.getSlot());
+					row = taskRow(full, full.hidePortTaskSlotOverlay, task, bounty::getOverlayColor, "b" + bounty.getData().getDbrow());
+					bountySummary(row, bounty);
+					bountyRows.put(bounty.getSlot(), new BountyRow(full, row));
 				}
-				markerView.add(Box.createRigidArea(new Dimension(0, 10)));
+				if (row != null)
+				{
+					markerView.add(row);
+					markerView.add(Box.createRigidArea(new Dimension(0, 2)));
+				}
 			}
 			if (allTasks.isEmpty())
 			{
@@ -216,31 +237,76 @@ public class PortTasksPluginPanel extends PluginPanel
 			revalidate();
 		}
 
+		/** Routing extension: one offered task on the last board, as the side list shows it. */
+		public static final class BoardRow
+		{
+			final int rank;
+			final PortLocation pickup;
+			final PortLocation delivery;
+			final String name;
+			final String metric;
+			/** Items it can give from the wanted list; empty if none. */
+			final String wanted;
+			/** The board tint for how much sailing it adds. */
+			final Color detour;
+
+			public BoardRow(int rank, PortLocation pickup, PortLocation delivery, String name, String metric, String wanted, Color detour)
+			{
+				this.rank = rank;
+				this.pickup = pickup;
+				this.delivery = delivery;
+				this.name = name;
+				this.metric = metric;
+				this.wanted = wanted;
+				this.detour = detour;
+			}
+		}
+
 		/**
-		 * Routing extension: shows the offered tasks of the last notice board, ranked, with the ranking
-		 * metric's value. Swing thread only.
+		 * Routing extension: the offered tasks of the last notice board, ranked, one line each: rank, route in
+		 * the board's detour colour, the ranking metric's value, and a star if it can give a wanted item (the
+		 * task's name and the items are in the tooltip). Swing thread only.
 		 */
-		public void showBoard(String boardName, String metricName, List<String[]> rows)
+		public void showBoard(PortLocation board, String metricName, List<BoardRow> rows)
 		{
 			boardView.removeAll();
 			if (!rows.isEmpty())
 			{
-				JLabel header = new JLabel(boardName + " board, by " + metricName);
+				JLabel header = new JLabel(TaskRow.shortName(board) + " \u00B7 " + metricName);
+				header.setFont(FontManager.getRunescapeSmallFont());
 				header.setForeground(Color.WHITE);
-				header.setBorder(new EmptyBorder(8, 0, 4, 0));
+				header.setBorder(new EmptyBorder(8, 0, 2, 0));
 				boardView.add(header);
-				for (String[] row : rows)
+				for (BoardRow r : rows)
 				{
-					// row: rank, name, metric value, wanted marker ("" or item names)
-					JLabel line = new JLabel("<html>#" + row[0] + " " + row[1] + " <font color='#9a9a9a'>" + row[2] + "</font>"
-						+ (row[3].isEmpty() ? "" : " <font color='#ffc800'>★ " + row[3] + "</font>") + "</html>");
-					line.setForeground("1".equals(row[0]) ? new Color(0, 220, 255) : Color.LIGHT_GRAY);
-					line.setBorder(new EmptyBorder(1, 0, 1, 0));
-					boardView.add(line);
+					boardView.add(boardLine(r, config.routingLegColor()));
 				}
 			}
 			boardView.revalidate();
 			boardView.repaint();
+		}
+
+		static JPanel boardLine(BoardRow r, Color best)
+		{
+			JPanel line = new JPanel(new BorderLayout(4, 0));
+			line.setBorder(new EmptyBorder(1, 0, 1, 0));
+			line.setToolTipText("<html>" + r.name + (r.wanted.isEmpty() ? "" : "<br>Wanted: " + r.wanted) + "</html>");
+
+			JLabel rank = new JLabel("#" + r.rank);
+			rank.setForeground(r.rank == 1 ? best : Color.GRAY);
+			JLabel route = new JLabel((r.wanted.isEmpty() ? "" : "\u2605 ")
+				+ TaskRow.shortName(r.pickup) + " > " + TaskRow.shortName(r.delivery));
+			route.setForeground(r.detour);
+			JLabel metric = new JLabel(r.metric);
+			metric.setForeground(Color.GRAY);
+			for (JLabel l : new JLabel[]{rank, route, metric})
+			{
+				l.setFont(FontManager.getRunescapeSmallFont());
+			}
+			line.add(rank, BorderLayout.WEST);
+			line.add(route, BorderLayout.CENTER);
+			line.add(metric, BorderLayout.EAST);
+			return line;
 		}
 
 		/** Routing extension: keeps a bag-size box in step when its toggle is changed in the config. Swing thread only. */
@@ -251,10 +317,70 @@ public class PortTasksPluginPanel extends PluginPanel
 
 		public void updateBountyPanel(BountyTask task) // avoid rebuilding the entire JPanel lol
 		{
-			BountyTaskPanel panel = (BountyTaskPanel) markerView.getComponent(task.getSlot());
-			if (panel != null)
+			// Looked up by slot: markerView's children alternate rows and spacers, so its index isn't the slot.
+			BountyRow r = bountyRows.get(task.getSlot());
+			if (r != null)
 			{
-				panel.refresh();
+				r.full.refresh();
+				bountySummary(r.row, task);
+			}
+		}
+
+		private TaskRow taskRow(JPanel full, JLabel fullEye, Task task, Supplier<Color> colour, String key)
+		{
+			return new TaskRow(full, fullEye, task, colour, openRows.contains(key), open ->
+			{
+				if (open)
+				{
+					openRows.add(key);
+				}
+				else
+				{
+					openRows.remove(key);
+				}
+			}, plugin);
+		}
+
+		private static void courierSummary(TaskRow row, CourierTask t)
+		{
+			int taken = t.getCargoTaken();
+			int delivered = t.getDelivered();
+			int required = t.getData().getCargoAmount();
+			String route = TaskRow.shortName(t.getData().getCargoLocation()) + " > " + TaskRow.shortName(t.getData().getDeliveryLocation());
+			String tip = "<html>" + t.getData().taskName
+				+ "<br><font color='red'>red</font>: crates picked up / needed; white: delivered / needed</html>";
+			if (delivered >= required)
+			{
+				row.setSummary(route, tip, "Claim", Color.GREEN);
+			}
+			else if (taken < required)
+			{
+				row.setSummary(route, tip, taken + "/" + required, Color.RED);
+			}
+			else
+			{
+				row.setSummary(route, tip, delivered + "/" + required, Color.WHITE);
+			}
+		}
+
+		private static void bountySummary(TaskRow row, BountyTask t)
+		{
+			int looted = t.getItemsCollected();
+			int required = t.getData().itemQuantity;
+			row.setSummary(t.getData().taskName, t.getData().taskName, looted + "/" + required,
+				looted < required ? Color.RED : Color.GREEN);
+		}
+
+		/** A bounty's full panel and its row, for updating both without a rebuild. */
+		private static final class BountyRow
+		{
+			final BountyTaskPanel full;
+			final TaskRow row;
+
+			BountyRow(BountyTaskPanel full, TaskRow row)
+			{
+				this.full = full;
+				this.row = row;
 			}
 		}
 
