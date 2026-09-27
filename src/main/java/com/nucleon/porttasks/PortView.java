@@ -111,8 +111,11 @@ final class PortView
 			config.routingNextStopPanel() ? routeLines(tasks, routing, dockedPort, cargoName) : Collections.emptyList());
 	}
 
-	/** "Grab 2 more crates of lead / ..." while docked where crates are still to be picked up. */
-	private static String reminder(List<CourierTask> tasks, PortLocation port, IntFunction<String> cargoName)
+	/**
+	 * "Grab 2 more crates of lead / ..." while docked where crates are still to be picked up; null if none.
+	 * Also the reason the plugin blocks setting sail from this port.
+	 */
+	static String reminder(List<CourierTask> tasks, PortLocation port, IntFunction<String> cargoName)
 	{
 		if (port == null)
 		{

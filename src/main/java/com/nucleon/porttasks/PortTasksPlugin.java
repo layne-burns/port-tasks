@@ -123,6 +123,7 @@ import com.nucleon.porttasks.routing.SubsetChooser;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.Text;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -958,6 +959,29 @@ public class PortTasksPlugin extends Plugin
 				log.info("[routing] blocked docking at {} (next stop {})", wrong.getName(), nextName);
 			}
 		}
+		if (config.routingBlockMissingCargo() && isSetHeading(event.getMenuOption()) && boatLocator.dockedOnBoat()
+			&& !client.isKeyPressed(KeyCode.KC_SHIFT))
+		{
+			// Setting sail from a port where a held task still has crates waiting: easy to miss with 9 crates.
+			PortLocation port = boatLocator.dockedPort();
+			String left = PortView.reminder(courierTasks, port, this::cargoName);
+			if (left != null)
+			{
+				event.consume();
+				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Blocked setting sail from " + port.getName()
+					+ ": " + left + ". Shift-click to sail anyway.", null);
+				overheadWarning = left;
+				overheadWarningUntil = client.getTickCount() + 8;
+				rebuildView();
+				log.info("[routing] blocked setting sail from {}: {}", port.getName(), left);
+			}
+		}
+	}
+
+	/** The helm's "Set heading" (the first one while docked sets sail); the target is empty, the id the direction. */
+	private static boolean isSetHeading(String option)
+	{
+		return option != null && "set heading".equalsIgnoreCase(Text.removeTags(option).trim());
 	}
 
 	/**

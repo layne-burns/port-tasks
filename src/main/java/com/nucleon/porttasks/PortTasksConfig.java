@@ -443,11 +443,24 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "routingBlockMissingCargo",
+		name = "Block sailing with cargo left",
+		description = "While docked on your boat: block 'Set heading' (setting sail) when a task you hold still has crates to "
+			+ "pick up at this port (chat + overhead warning). Shift-click sails anyway",
+		section = portSection,
+		position = 4
+	)
+	default boolean routingBlockMissingCargo()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "routingHighlightHold",
 		name = "Mark crates to take",
 		description = "In the cargo hold, tint the crates to take out (docked: for this port; at sea: for the next stop, if it has deliveries) and dim the rest",
 		section = portSection,
-		position = 4
+		position = 5
 	)
 	default boolean routingHighlightHold()
 	{
@@ -459,7 +472,7 @@ public interface PortTasksConfig extends Config
 		name = "Crates-to-take colour",
 		description = "Tint for the crates to take out at this port",
 		section = portSection,
-		position = 5
+		position = 6
 	)
 	default Color routingTakeColor()
 	{
@@ -470,7 +483,7 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightHelmMissingCargo",
 		name = "Helm: missing cargo",
 		description = "Outline your boat's helm with the number of crates still to pick up",
-		position = 6,
+		position = 7,
 		section = portSection
 	)
 	default boolean highlightHelmMissingCargo()
@@ -482,7 +495,7 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightGangplanks",
 		name = "Highlight gangplanks",
 		description = "Outline gangplanks in the world",
-		position = 7,
+		position = 8,
 		section = portSection
 	)
 	default boolean highlightGangplanks()
@@ -494,7 +507,7 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightGangplanksColor",
 		name = "Gangplank colour",
 		description = "Color used to outline gangplanks in the world",
-		position = 8,
+		position = 9,
 		section = portSection
 	)
 	default Color highlightGangplanksColor()
@@ -506,7 +519,7 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightNoticeboards",
 		name = "Highlight notice boards",
 		description = "Outline noticeboards in the world",
-		position = 9,
+		position = 10,
 		section = portSection
 	)
 	default boolean highlightNoticeboards()
@@ -518,7 +531,7 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightNoticeboardsColor",
 		name = "Notice board colour",
 		description = "Color used to outline noticeboards in the world",
-		position = 10,
+		position = 11,
 		section = portSection
 	)
 	default Color highlightNoticeboardsColor()
@@ -530,7 +543,7 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightCargoHolds",
 		name = "Highlight cargo holds",
 		description = "Outline cargo holds in your boat",
-		position = 11,
+		position = 12,
 		section = portSection
 	)
 	default boolean highlightCargoHolds()
@@ -542,7 +555,7 @@ public interface PortTasksConfig extends Config
 		keyName = "highlightCargoHoldsColor",
 		name = "Cargo hold colour",
 		description = "Color used to outline cargo holds in your boat",
-		position = 12,
+		position = 13,
 		section = portSection
 	)
 	default Color highlightCargoHoldsColor()
@@ -553,31 +566,31 @@ public interface PortTasksConfig extends Config
 	// Each task's colour starts as its slot's colour here; it can be changed per task from the side panel.
 	String TASK_COLOUR_TIP = "Default colour for the task in this slot: its dock ledger tiles, helm outline and side-panel swatch (each task's own colour can be changed in the side panel)";
 
-	@ConfigItem(keyName = "navColor", name = "Task 1 colour", description = TASK_COLOUR_TIP, section = portSection, position = 13)
+	@ConfigItem(keyName = "navColor", name = "Task 1 colour", description = TASK_COLOUR_TIP, section = portSection, position = 14)
 	default Color getNavColor()
 	{
 		return new Color(201, 51, 255);
 	}
 
-	@ConfigItem(keyName = "navColor2", name = "Task 2 colour", description = TASK_COLOUR_TIP, section = portSection, position = 14)
+	@ConfigItem(keyName = "navColor2", name = "Task 2 colour", description = TASK_COLOUR_TIP, section = portSection, position = 15)
 	default Color getNavColor2()
 	{
 		return new Color(255, 51, 105);
 	}
 
-	@ConfigItem(keyName = "navColor3", name = "Task 3 colour", description = TASK_COLOUR_TIP, section = portSection, position = 15)
+	@ConfigItem(keyName = "navColor3", name = "Task 3 colour", description = TASK_COLOUR_TIP, section = portSection, position = 16)
 	default Color getNavColor3()
 	{
 		return new Color(255, 201, 51);
 	}
 
-	@ConfigItem(keyName = "navColor4", name = "Task 4 colour", description = TASK_COLOUR_TIP, section = portSection, position = 16)
+	@ConfigItem(keyName = "navColor4", name = "Task 4 colour", description = TASK_COLOUR_TIP, section = portSection, position = 17)
 	default Color getNavColor4()
 	{
 		return new Color(105, 255, 51);
 	}
 
-	@ConfigItem(keyName = "navColor5", name = "Task 5 colour", description = TASK_COLOUR_TIP, section = portSection, position = 17)
+	@ConfigItem(keyName = "navColor5", name = "Task 5 colour", description = TASK_COLOUR_TIP, section = portSection, position = 18)
 	default Color getNavColor5()
 	{
 		return new Color(51, 255, 201);
