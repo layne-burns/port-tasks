@@ -959,7 +959,13 @@ public class PortTasksPlugin extends Plugin
 				log.info("[routing] blocked docking at {} (next stop {})", wrong.getName(), nextName);
 			}
 		}
-		if (config.routingBlockMissingCargo() && isSetHeading(event.getMenuOption()) && boatLocator.dockedOnBoat()
+		if (boatLocator.dockedOnBoat())
+		{
+			// Temporary: which click sets sail from a dock isn't confirmed yet.
+			log.info("[routing] docked boat click: '{}' on '{}' (id {}, action {})", Text.removeTags(event.getMenuOption()),
+				Text.removeTags(event.getMenuTarget()), event.getId(), event.getMenuAction());
+		}
+		if (config.routingBlockMissingCargo() && isSetSail(event.getMenuOption()) && boatLocator.dockedOnBoat()
 			&& !client.isKeyPressed(KeyCode.KC_SHIFT))
 		{
 			// Setting sail from a port where a held task still has crates waiting: easy to miss with 9 crates.
@@ -978,10 +984,14 @@ public class PortTasksPlugin extends Plugin
 		}
 	}
 
-	/** The helm's "Set heading" (the first one while docked sets sail); the target is empty, the id the direction. */
-	private static boolean isSetHeading(String option)
+	/**
+	 * A click that can set sail: the helm's "Set heading" (the target is empty, the id the direction; the first one
+	 * while docked sets sail) or "Set sail".
+	 */
+	private static boolean isSetSail(String option)
 	{
-		return option != null && "set heading".equalsIgnoreCase(Text.removeTags(option).trim());
+		String o = option == null ? "" : Text.removeTags(option).trim();
+		return "set heading".equalsIgnoreCase(o) || "set sail".equalsIgnoreCase(o);
 	}
 
 	/**
