@@ -617,20 +617,13 @@ public interface PortTasksConfig extends Config
 		return true;
 	}
 
-	@ConfigItem(keyName = "routingLegCounter", name = "Show tiles sailed",
-		description = "Next-stop panel: tiles and time for the leg under way, against the estimate, and the last leg",
-		section = panelsSection, position = 2)
-	default boolean routingLegCounter()
-	{
-		return true;
-	}
 
 	@ConfigItem(
 		keyName = "routingBagCounts",
 		name = "Bag counts",
 		description = "In the route panel, count the port bags received this session by type and size",
 		section = panelsSection,
-		position = 3
+		position = 2
 	)
 	default boolean routingBagCounts()
 	{
@@ -642,7 +635,7 @@ public interface PortTasksConfig extends Config
 		name = "Accent colour",
 		description = "Panel titles, and the best task's badge and outline on the board",
 		section = panelsSection,
-		position = 4
+		position = 3
 	)
 	default Color routingLegColor()
 	{

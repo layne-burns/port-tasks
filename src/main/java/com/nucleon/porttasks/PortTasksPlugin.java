@@ -170,12 +170,9 @@ public class PortTasksPlugin extends Plugin
 	private XpLearner xpLearner;
 	RoutingService routingService;
 	BagCounter bagCounter;
-	// Routing extension: the leg being sailed, what was learned from past legs, and the last leg for the panel.
+	// Routing extension: the leg being sailed and what was learned from past legs.
 	final LegTracker legTracker = new LegTracker();
 	private LegLearner legLearner;
-	LegTracker.Leg lastLeg;
-	double lastLegEstimate;
-	boolean lastLegKept;
 	/** The boat's move mode as last seen; a leg starts when it leaves "docked". */
 	private int lastMoveMode = -1;
 	/**
@@ -959,12 +956,6 @@ public class PortTasksPlugin extends Plugin
 				log.info("[routing] blocked docking at {} (next stop {})", wrong.getName(), nextName);
 			}
 		}
-		if (boatLocator.dockedOnBoat())
-		{
-			// Temporary: which click sets sail from a dock isn't confirmed yet.
-			log.info("[routing] docked boat click: '{}' on '{}' (id {}, action {})", Text.removeTags(event.getMenuOption()),
-				Text.removeTags(event.getMenuTarget()), event.getId(), event.getMenuAction());
-		}
 		if (config.routingBlockMissingCargo() && isSetSail(event.getMenuOption()) && boatLocator.dockedOnBoat()
 			&& !client.isKeyPressed(KeyCode.KC_SHIFT))
 		{
@@ -1538,7 +1529,7 @@ public class PortTasksPlugin extends Plugin
 		boolean wasDocked = lastMoveMode == BoatLocator.MOVE_MODE_DOCKED;
 		lastMoveMode = mode;
 		if (!wasDocked || mode == BoatLocator.MOVE_MODE_DOCKED || settleTicks > 0 || legTracker.active()
-			|| !boatLocator.onBoat() || !config.routingLearnLegs() && !config.routingLegCounter())
+			|| !boatLocator.onBoat() || !config.routingLearnLegs())
 		{
 			return;
 		}
@@ -1558,10 +1549,8 @@ public class PortTasksPlugin extends Plugin
 		{
 			return;
 		}
-		lastLeg = leg;
-		lastLegEstimate = routingService.graph().distance(leg.from, leg.to);
-		lastLegKept = config.routingLearnLegs() && legLearner.record(leg, lastLegEstimate);
-		if (lastLegKept)
+		double estimate = routingService.graph().distance(leg.from, leg.to);
+		if (config.routingLearnLegs() && legLearner.record(leg, estimate))
 		{
 			applyLearnedLegs();
 			routingService.replan(courierTasks);
@@ -1579,12 +1568,6 @@ public class PortTasksPlugin extends Plugin
 		routingService.graph().setLearned(config.routingLearnLegs()
 			? legLearner.estimates(config.routingLegEstimate()) : Collections.emptyList());
 		updateBestXpPerTile();
-	}
-
-	/** Routing extension: ticks spent sailing on the current leg. */
-	int legTicks()
-	{
-		return legTracker.ticks();
 	}
 
 	/** Routing extension: the side panel's bag-size boxes write the config through here. */
@@ -1932,7 +1915,7 @@ public class PortTasksPlugin extends Plugin
 	private static final String[] REMOVED_KEYS = {
 		"drawOverlay", "pathOffset", "pathDrawDistance",
 		"enableTracer", "tracerSpeed", "tracerIntensity", "highlightTaskItems", "routingEnabled", "routingUseShortestPath",
-		"routingWestOnly", "porttaskslots",
+		"routingWestOnly", "porttaskslots", "routingLegCounter",
 	};
 
 	private void migrateConfiguration()

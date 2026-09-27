@@ -1,8 +1,6 @@
 package com.nucleon.porttasks;
 
-import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.routing.BagSize;
-import com.nucleon.porttasks.routing.LegTracker;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
@@ -41,57 +39,8 @@ class RoutingNextStopOverlay extends OverlayPanel
 	public Dimension render(Graphics2D graphics)
 	{
 		boolean route = renderRoute();
-		boolean leg = renderLeg();
 		boolean bags = renderBags();
-		return route || leg || bags ? super.render(graphics) : null;
-	}
-
-	private boolean renderLeg()
-	{
-		if (!config.routingLegCounter())
-		{
-			return false;
-		}
-		LegTracker tracker = plugin.legTracker;
-		if (tracker.active())
-		{
-			PortLocation to = plugin.routingService.nextStop();
-			panelComponent.getChildren().add(TitleComponent.builder().text("Sailing from " + tracker.from().getName())
-				.color(config.routingLegColor()).build());
-			panelComponent.getChildren().add(LineComponent.builder()
-				.left("Sailed").right(String.format("%.0f tiles, %s", tracker.tiles(), time(plugin.legTicks()))).build());
-			if (to != null && to != tracker.from())
-			{
-				panelComponent.getChildren().add(LineComponent.builder()
-					.left("Est. to " + to.getName()).right(String.format("%.0f", plugin.routingService.graph().distance(tracker.from(), to)))
-					.leftColor(Color.GRAY).rightColor(Color.GRAY).build());
-			}
-			return true;
-		}
-		LegTracker.Leg last = plugin.lastLeg;
-		if (last == null)
-		{
-			return false;
-		}
-		panelComponent.getChildren().add(TitleComponent.builder().text("Last leg").color(config.routingLegColor()).build());
-		panelComponent.getChildren().add(LineComponent.builder().left(last.from.getName() + " > " + last.to.getName()).build());
-		panelComponent.getChildren().add(LineComponent.builder()
-			.left("Sailed").right(String.format("%.0f tiles, %s", last.tiles, time(last.ticks))).build());
-		panelComponent.getChildren().add(LineComponent.builder()
-			.left("Estimate was").right(Double.isFinite(plugin.lastLegEstimate) ? String.format("%.0f", plugin.lastLegEstimate) : "none")
-			.leftColor(Color.GRAY).rightColor(Color.GRAY).build());
-		if (!plugin.lastLegKept && config.routingLearnLegs())
-		{
-			panelComponent.getChildren().add(LineComponent.builder().left("Not learned: over 2x estimate").leftColor(Color.ORANGE).build());
-		}
-		return true;
-	}
-
-	/** Game ticks (0.6 s) as m:ss. */
-	private static String time(int ticks)
-	{
-		int seconds = Math.round(ticks * 0.6f);
-		return String.format("%d:%02d", seconds / 60, seconds % 60);
+		return route || bags ? super.render(graphics) : null;
 	}
 
 	private boolean renderBags()
