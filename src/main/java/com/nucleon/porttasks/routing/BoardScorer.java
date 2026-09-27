@@ -180,17 +180,32 @@ public final class BoardScorer
 	}
 
 	/**
-	 * False if the "only Large/Huge bags" filter is on and this task's bag would be smaller. A task whose XP
-	 * isn't known passes, since its bag size can't be told.
+	 * False if this task's bag size is switched off in the bag filter. A task whose XP isn't known passes,
+	 * since its bag size can't be told.
 	 */
 	public boolean passesBagFilter(CourierTaskData d)
 	{
-		if (!config.routingOnlyBigBags())
-		{
-			return true;
-		}
 		Integer taskXp = xp.xp(d.getId());
-		return taskXp == null || BagSize.forXp(taskXp).compareTo(BagSize.LARGE) >= 0;
+		return taskXp == null || bagEnabled(config, BagSize.forXp(taskXp));
+	}
+
+	/** Whether the bag filter lets tasks with this bag size through. */
+	public static boolean bagEnabled(PortTasksConfig config, BagSize size)
+	{
+		switch (size)
+		{
+			case TINY:
+				return config.routingBagTiny();
+			case SMALL:
+				return config.routingBagSmall();
+			case MEDIUM:
+				return config.routingBagMedium();
+			case LARGE:
+				return config.routingBagLarge();
+			case HUGE:
+			default:
+				return config.routingBagHuge();
+		}
 	}
 
 	private static Comparator<Score> comparator(RankBy by)

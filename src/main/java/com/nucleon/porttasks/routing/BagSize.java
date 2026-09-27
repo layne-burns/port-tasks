@@ -46,6 +46,25 @@ public enum BagSize
 		return wikiName;
 	}
 
+	/** Config key of this size's bag-filter toggle (PortTasksConfig.routingBagTiny etc.). */
+	public String filterKey()
+	{
+		return "routingBag" + wikiName;
+	}
+
+	/** The size whose bag-filter toggle has this config key, or null. */
+	public static BagSize forFilterKey(String key)
+	{
+		for (BagSize s : values())
+		{
+			if (s.filterKey().equals(key))
+			{
+				return s;
+			}
+		}
+		return null;
+	}
+
 	/** Expected coins in a coin bag of this size (midpoint of the wiki's range). */
 	public double expectedCoins()
 	{

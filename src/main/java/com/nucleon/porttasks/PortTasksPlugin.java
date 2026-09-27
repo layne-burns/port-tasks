@@ -30,6 +30,7 @@ import com.google.common.base.MoreObjects;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.nucleon.porttasks.routing.BagCounter;
+import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
@@ -387,6 +388,7 @@ public class PortTasksPlugin extends Plugin
 			return true;
 		});
 
+		migrateOnlyBigBags();
 		CourierWikiData courierWikiData = CourierWikiData.load(gson);
 		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
 		bagCounter = new BagCounter(courierWikiData);
@@ -483,10 +485,11 @@ public class PortTasksPlugin extends Plugin
 			{
 				wantedItems.parse(config.routingWantedItems());
 			}
-			if ("routingOnlyBigBags".equals(event.getKey()))
+			BagSize bag = BagSize.forFilterKey(event.getKey());
+			if (bag != null)
 			{
-				boolean on = config.routingOnlyBigBags();
-				SwingUtilities.invokeLater(() -> pluginPanel.setOnlyBigBags(on));
+				boolean on = BoardScorer.bagEnabled(config, bag);
+				SwingUtilities.invokeLater(() -> pluginPanel.setBagEnabled(bag, on));
 			}
 			clientThread.invokeLater(() ->
 			{
@@ -1190,10 +1193,28 @@ public class PortTasksPlugin extends Plugin
 		return boardScores.get(dbrow);
 	}
 
-	/** Routing extension: the side panel's "only Large/Huge bags" checkbox writes the config through here. */
-	public void setOnlyBigBags(boolean on)
+	/** Routing extension: the side panel's bag-size boxes write the config through here. */
+	public void setBagEnabled(BagSize size, boolean on)
 	{
-		configManager.setConfiguration(CONFIG_GROUP, "routingOnlyBigBags", on);
+		configManager.setConfiguration(CONFIG_GROUP, size.filterKey(), on);
+	}
+
+	/** The single "only Large/Huge bags" toggle became one toggle per size; carry an old "on" across once. */
+	private void migrateOnlyBigBags()
+	{
+		String old = configManager.getConfiguration(CONFIG_GROUP, "routingOnlyBigBags");
+		if (old == null)
+		{
+			return;
+		}
+		if (Boolean.parseBoolean(old))
+		{
+			for (BagSize s : new BagSize[]{BagSize.TINY, BagSize.SMALL, BagSize.MEDIUM})
+			{
+				configManager.setConfiguration(CONFIG_GROUP, s.filterKey(), false);
+			}
+		}
+		configManager.unsetConfiguration(CONFIG_GROUP, "routingOnlyBigBags");
 	}
 
 	/** Routing extension: true if the "only Large/Huge bags" filter rules out this offered courier task. */

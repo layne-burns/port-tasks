@@ -620,17 +620,39 @@ public interface PortTasksConfig extends Config
 		return new Color(0, 220, 255);
 	}
 
-	@ConfigItem(
-		keyName = "routingOnlyBigBags",
-		name = "Only Large/Huge bag tasks",
-		description = "Dim courier tasks on a notice board whose bag would be smaller than Large, and leave them out of the ranking."
-			+ " Bag size follows from the task's base XP; whether it's a coin or reward bag is random (1 in 5 is a reward bag). Also in the side panel.",
-		section = routing,
-		position = 19
-	)
-	default boolean routingOnlyBigBags()
+	// Bag-size filter: a courier task whose bag size is switched off is dimmed on the board and left out of
+	// the ranking. Size follows from base XP; coin or reward bag is random (1 in 5 is a reward bag). Mirrored
+	// by the side panel's T/S/M/L/H boxes; keys are "routingBag" + BagSize.wikiName().
+	String BAG_FILTER_TIP = "Offer courier tasks that give a bag of this size (coin or reward: 1 in 5 is a reward bag). Also in the side panel";
+
+	@ConfigItem(keyName = "routingBagTiny", name = "Tiny bag tasks", description = BAG_FILTER_TIP, section = routing, position = 14)
+	default boolean routingBagTiny()
 	{
-		return false;
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBagSmall", name = "Small bag tasks", description = BAG_FILTER_TIP, section = routing, position = 15)
+	default boolean routingBagSmall()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBagMedium", name = "Medium bag tasks", description = BAG_FILTER_TIP, section = routing, position = 16)
+	default boolean routingBagMedium()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBagLarge", name = "Large bag tasks", description = BAG_FILTER_TIP, section = routing, position = 17)
+	default boolean routingBagLarge()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "routingBagHuge", name = "Huge bag tasks", description = BAG_FILTER_TIP, section = routing, position = 18)
+	default boolean routingBagHuge()
+	{
+		return true;
 	}
 
 	@ConfigItem(

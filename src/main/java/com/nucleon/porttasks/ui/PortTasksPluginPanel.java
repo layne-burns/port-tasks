@@ -37,6 +37,8 @@ import com.nucleon.porttasks.PortTasksConfig;
 import com.nucleon.porttasks.PortTasksPlugin;
 import com.nucleon.porttasks.Task;
 import com.nucleon.porttasks.enums.PortPaths;
+import com.nucleon.porttasks.routing.BagSize;
+import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.ui.adapters.ReloadPortTasks;
 
 import net.runelite.api.Client;
@@ -61,7 +63,9 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 
 public class PortTasksPluginPanel extends PluginPanel
@@ -73,8 +77,8 @@ public class PortTasksPluginPanel extends PluginPanel
 		private final JPanel markerView = new JPanel();
 		// Routing extension: the last notice board's offered tasks, ranked.
 		private final JPanel boardView = new JPanel();
-		// Routing extension: mirrors the "Only Large/Huge bag tasks" config toggle.
-		private final JCheckBox onlyBigBags = new JCheckBox("Only Large/Huge bag tasks");
+		// Routing extension: one box per bag size, mirroring the bag-filter config toggles.
+		private final Map<BagSize, JCheckBox> bagBoxes = new EnumMap<>(BagSize.class);
 		private ClientThread clientThread;
 		private ItemManager itemManager;
 		private Client client;
@@ -118,11 +122,21 @@ public class PortTasksPluginPanel extends PluginPanel
 			titlePanel.add(markerButtons, BorderLayout.EAST);
 			northPanel.add(titlePanel, BorderLayout.NORTH);
 
-			onlyBigBags.setSelected(config.routingOnlyBigBags());
-			onlyBigBags.setToolTipText("Dim board tasks whose bag would be smaller than Large and leave them out of the ranking");
-			onlyBigBags.setFocusable(false);
-			onlyBigBags.addActionListener(e -> plugin.setOnlyBigBags(onlyBigBags.isSelected()));
-			northPanel.add(onlyBigBags, BorderLayout.SOUTH);
+			// T S M L H: which bag sizes to offer; the others are dimmed on the board and not ranked.
+			JPanel bagRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+			JLabel bagLabel = new JLabel("Bags ");
+			bagLabel.setToolTipText("Courier tasks to offer, by bag size");
+			bagRow.add(bagLabel);
+			for (BagSize size : BagSize.values())
+			{
+				JCheckBox box = new JCheckBox(size.wikiName().substring(0, 1), BoardScorer.bagEnabled(config, size));
+				box.setToolTipText(size.wikiName() + " bag tasks");
+				box.setFocusable(false);
+				box.addActionListener(e -> plugin.setBagEnabled(size, box.isSelected()));
+				bagBoxes.put(size, box);
+				bagRow.add(box);
+			}
+			northPanel.add(bagRow, BorderLayout.SOUTH);
 
 			// marker view panels, these are dynamically added in rebuild()
 			JPanel centerPanel = new JPanel(new BorderLayout());
@@ -229,10 +243,10 @@ public class PortTasksPluginPanel extends PluginPanel
 			boardView.repaint();
 		}
 
-		/** Routing extension: keeps the checkbox in step when the toggle is changed in the config. Swing thread only. */
-		public void setOnlyBigBags(boolean on)
+		/** Routing extension: keeps a bag-size box in step when its toggle is changed in the config. Swing thread only. */
+		public void setBagEnabled(BagSize size, boolean on)
 		{
-			onlyBigBags.setSelected(on);
+			bagBoxes.get(size).setSelected(on);
 		}
 
 		public void updateBountyPanel(BountyTask task) // avoid rebuilding the entire JPanel lol
