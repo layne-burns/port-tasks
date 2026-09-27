@@ -2,7 +2,6 @@ package com.nucleon.porttasks.ui;
 
 import com.nucleon.porttasks.PortTasksPlugin;
 import com.nucleon.porttasks.Task;
-import com.nucleon.porttasks.enums.PortLocation;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -42,7 +41,7 @@ class TaskRow extends JPanel
 	}
 
 	private final JLabel arrow = new JLabel();
-	private final JLabel title = new JLabel();
+	private final FitLabel title = new FitLabel();
 	private final JLabel progress = new JLabel();
 	private final JLabel eye = new JLabel();
 	private final Component full;
@@ -124,10 +123,13 @@ class TaskRow extends JPanel
 		updateEye();
 	}
 
-	/** Sets the one-line text: what the task is, and how far along it is. */
-	void setSummary(String text, String tooltip, String progressText, Color progressColour)
+	/**
+	 * Sets the one-line text: what the task is (the longest of the given versions that fits), and how far
+	 * along it is.
+	 */
+	void setSummary(String[] text, String tooltip, String progressText, Color progressColour)
 	{
-		title.setText(text);
+		title.setVersions(text);
 		title.setToolTipText(tooltip);
 		progress.setToolTipText(tooltip);
 		progress.setText(progressText);
@@ -147,33 +149,6 @@ class TaskRow extends JPanel
 		arrow.setText(open ? "▾" : "▸");
 		revalidate();
 		repaint();
-	}
-
-	/**
-	 * Port names cut to the word players use (Sarim, Summer, Void...), so two fit on one line of the side
-	 * panel next to the progress and eye.
-	 */
-	static String shortName(PortLocation port)
-	{
-		switch (port)
-		{
-			case CIVITAS_ILLA_FORTIS:
-				return "Civitas";
-			case VOID_KNIGHTS_OUTPOST:
-				return "Void";
-			case RUINS_OF_UNKAH:
-				return "Unkah";
-			case SUMMER_SHORE:
-			case DEEPFIN_POINT:
-			case SUNSET_COAST:
-			case CORSAIR_COVE:
-			case MUSA_POINT:
-			case CAIRN_ISLE:
-			case LUNAR_ISLE:
-				return port.getName().replaceFirst("^The ", "").split(" ")[0];
-			default:
-				return port.getName().replaceFirst("^(The|Port) ", "");
-		}
 	}
 
 	/** A small square in the task's overlay colour. */

@@ -272,10 +272,12 @@ public class PortTasksPluginPanel extends PluginPanel
 			boardView.removeAll();
 			if (!rows.isEmpty())
 			{
-				JLabel header = new JLabel(TaskRow.shortName(board) + " \u00B7 " + metricName);
+				FitLabel header = new FitLabel();
 				header.setFont(FontManager.getRunescapeSmallFont());
 				header.setForeground(Color.WHITE);
 				header.setBorder(new EmptyBorder(8, 0, 2, 0));
+				header.setVersions(PortNames.full(board) + " board \u00B7 " + metricName,
+					PortNames.abbreviation(board) + " \u00B7 " + metricName, PortNames.abbreviation(board));
 				boardView.add(header);
 				for (BoardRow r : rows)
 				{
@@ -294,8 +296,8 @@ public class PortTasksPluginPanel extends PluginPanel
 
 			JLabel rank = new JLabel("#" + r.rank);
 			rank.setForeground(r.rank == 1 ? best : Color.GRAY);
-			JLabel route = new JLabel((r.wanted.isEmpty() ? "" : "\u2605 ")
-				+ TaskRow.shortName(r.pickup) + " > " + TaskRow.shortName(r.delivery));
+			FitLabel route = new FitLabel();
+			route.setVersions(PortNames.route(r.wanted.isEmpty() ? "" : "\u2605 ", r.pickup, r.delivery));
 			route.setForeground(r.detour);
 			JLabel metric = new JLabel(r.metric);
 			metric.setForeground(Color.GRAY);
@@ -346,7 +348,7 @@ public class PortTasksPluginPanel extends PluginPanel
 			int taken = t.getCargoTaken();
 			int delivered = t.getDelivered();
 			int required = t.getData().getCargoAmount();
-			String route = TaskRow.shortName(t.getData().getCargoLocation()) + " > " + TaskRow.shortName(t.getData().getDeliveryLocation());
+			String[] route = PortNames.route("", t.getData().getCargoLocation(), t.getData().getDeliveryLocation());
 			String tip = "<html>" + t.getData().taskName
 				+ "<br><font color='red'>red</font>: crates picked up / needed; white: delivered / needed</html>";
 			if (delivered >= required)
@@ -367,7 +369,7 @@ public class PortTasksPluginPanel extends PluginPanel
 		{
 			int looted = t.getItemsCollected();
 			int required = t.getData().itemQuantity;
-			row.setSummary(t.getData().taskName, t.getData().taskName, looted + "/" + required,
+			row.setSummary(new String[]{t.getData().taskName}, t.getData().taskName, looted + "/" + required,
 				looted < required ? Color.RED : Color.GREEN);
 		}
 
