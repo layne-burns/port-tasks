@@ -4,6 +4,7 @@ import com.nucleon.porttasks.CourierTask;
 import com.nucleon.porttasks.CourierTaskData;
 import com.nucleon.porttasks.PortTasksConfig;
 import com.nucleon.porttasks.enums.PortLocation;
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,6 +57,12 @@ public final class BoardScorer
 		public final int addedStops;
 		/** Added cost / cost of doing the task on its own; 0 = rides entirely on the current route. */
 		public final double routeFit;
+		/** Sailing distance from the task's pickup to its delivery port. */
+		public final double ownTiles;
+		/** Added tiles / (2 x own tiles): 0 = free ride, 1 = as bad as sailing out and back just for it. */
+		public final double detour;
+		/** Board tint for {@link #detour}: pink for a free ride, then green through yellow to red. */
+		public final Color detourColor;
 		public final double xpPerAddedTile;
 		public final double valuePerAddedTile;
 		public final double planRateAfter;
@@ -66,7 +73,8 @@ public final class BoardScorer
 
 		Score(int dbrow, String name, PortLocation destination, Integer xp, BagSize bag, double expectedValue,
 			double addedCost, double addedTiles, int addedStops, double routeFit, double xpPerAddedTile,
-			double valuePerAddedTile, double planRateAfter, List<String> signatureDrops, List<String> wantedDrops)
+			double valuePerAddedTile, double planRateAfter, List<String> signatureDrops, List<String> wantedDrops,
+			double ownTiles)
 		{
 			this.dbrow = dbrow;
 			this.name = name;
@@ -83,6 +91,9 @@ public final class BoardScorer
 			this.planRateAfter = planRateAfter;
 			this.signatureDrops = signatureDrops;
 			this.wantedDrops = wantedDrops;
+			this.ownTiles = ownTiles;
+			this.detour = ownTiles > 0 ? addedTiles / (2 * ownTiles) : Double.POSITIVE_INFINITY;
+			this.detourColor = detourColor(addedTiles, ownTiles);
 		}
 	}
 
@@ -168,7 +179,7 @@ public final class BoardScorer
 				taskXp == null ? 0 : taskXp / denominator,
 				value / denominator,
 				(baseXp + (taskXp == null ? 0 : taskXp)) / Math.max(plan.cost, 1),
-				signature, wantedHere));
+				signature, wantedHere, graph.distance(d.getCargoLocation(), d.getDeliveryLocation())));
 		}
 
 		scores.sort(comparator(config.routingRankBy()));
@@ -177,6 +188,26 @@ public final class BoardScorer
 			scores.get(i).rank = i + 1;
 		}
 		return scores;
+	}
+
+	/** Added tiles below this count as a free ride (plan lengths are sums of real-valued path lengths). */
+	private static final double FREE_RIDE_TILES = 0.5;
+	private static final Color FREE_RIDE = new Color(255, 105, 180);
+
+	/**
+	 * Colour for how much a task adds to the trip: pink if nothing, else hue from green (adds nothing) to red
+	 * (adds twice the task's own pickup-to-delivery distance or more, i.e. an out-and-back trip just for it),
+	 * passing through yellow halfway. Unknown distances count as red.
+	 */
+	static Color detourColor(double addedTiles, double ownTiles)
+	{
+		if (addedTiles < FREE_RIDE_TILES)
+		{
+			return FREE_RIDE;
+		}
+		double t = ownTiles > 0 && Double.isFinite(ownTiles) && Double.isFinite(addedTiles)
+			? Math.min(1, addedTiles / (2 * ownTiles)) : 1;
+		return Color.getHSBColor((float) ((1 - t) / 3), 0.9f, 1f);
 	}
 
 	/**

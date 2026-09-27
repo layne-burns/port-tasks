@@ -742,6 +742,23 @@ public interface PortTasksConfig extends Config
 		return new Color(255, 200, 0);
 	}
 
+	@ConfigItem(keyName = "routingDetourTint", name = "Tint board by detour",
+		description = "Tint each offered courier task by how much sailing it adds: pink = nothing, then green to red,"
+			+ " red = twice its own pickup-to-delivery distance (an out-and-back trip just for it)",
+		section = routing, position = 31)
+	default boolean routingDetourTint()
+	{
+		return true;
+	}
+
+	@Range(max = 100)
+	@ConfigItem(keyName = "routingDetourOpacity", name = "Detour tint opacity", description = "Opacity of the detour tint, 0-100%",
+		section = routing, position = 32)
+	default int routingDetourOpacity()
+	{
+		return 35;
+	}
+
 	enum Overlay
 	{
 		NONE,

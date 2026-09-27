@@ -1,8 +1,10 @@
 package com.nucleon.porttasks;
 
 import com.nucleon.porttasks.routing.BoardScorer;
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -21,7 +23,8 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 /**
  * Routing extension (SPEC-routing.md §2.3): on an open notice board, each offered courier task gets its
  * rank under the chosen metric; the best is outlined in the route colour and tasks that can give a wanted
- * item in the wanted colour.
+ * item in the wanted colour. Each is also tinted by how much sailing it adds (BoardScorer.detourColor);
+ * everything drawn here is worked out when the board is scored, not per frame.
  */
 class RoutingBoardOverlay extends Overlay
 {
@@ -42,7 +45,9 @@ class RoutingBoardOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!config.routingEnabled() || !config.routingBoardBadges())
+		boolean badges = config.routingBoardBadges();
+		boolean tint = config.routingDetourTint();
+		if (!config.routingEnabled() || !badges && !tint)
 		{
 			return null;
 		}
@@ -60,12 +65,25 @@ class RoutingBoardOverlay extends Overlay
 			return null;
 		}
 		graphics.setFont(FontManager.getRunescapeSmallFont());
+		AlphaComposite tintAlpha = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, config.routingDetourOpacity() / 100f);
 		for (Map.Entry<Integer, OfferedTaskData> e : plugin.getOfferedTasks().entrySet())
 		{
 			BoardScorer.Score s = plugin.boardScore(e.getKey());
 			Widget w = e.getValue().getTaskWidget();
 			Rectangle r = w == null ? null : w.getBounds();
 			if (s == null || r == null || w.isHidden())
+			{
+				continue;
+			}
+			if (tint)
+			{
+				Composite opaque = graphics.getComposite();
+				graphics.setComposite(tintAlpha);
+				graphics.setColor(s.detourColor);
+				graphics.fill(r);
+				graphics.setComposite(opaque);
+			}
+			if (!badges)
 			{
 				continue;
 			}
