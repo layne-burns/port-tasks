@@ -64,6 +64,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import com.nucleon.porttasks.enums.PortTaskTrigger;
 import com.nucleon.porttasks.overlay.TaskHighlight;
+import com.nucleon.porttasks.enums.TaskReward;
 import com.nucleon.porttasks.ui.PortTasksPluginPanel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -92,6 +93,7 @@ import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.events.WorldViewUnloaded;
 import net.runelite.api.gameval.InterfaceID;
@@ -175,11 +177,20 @@ public class PortTasksPlugin extends Plugin
 	private DockGuard dockGuard;
 	/** A short-lived warning to show above the player (e.g. a blocked dock), and the tick it expires. */
 	private String overheadWarning;
+	/** Routing extension: what the port overlays show; rebuilt by rebuildView() on the events that change it. */
+	private volatile PortView view = PortView.EMPTY;
 	private int overheadWarningUntil;
 	private final WantedItems wantedItems = new WantedItems();
 	private BoardScorer boardScorer;
 	/** Scores of the last notice board's offered courier tasks, by dbrow (routing extension). */
 	private volatile Map<Integer, BoardScorer.Score> boardScores = new HashMap<>();
+	/** How TaskHighlight marks each offered task; rebuilt by boardChanged(). */
+	@Getter
+	private volatile Map<Integer, TaskHighlight.Mark> boardMarks = Collections.emptyMap();
+	/** Goes up whenever anything shown about the board changes, so the tooltip knows to redo its text. */
+	private volatile int boardVersion;
+	/** Best XP per tile over all courier tasks, for the tooltip's colour scale; see updateBestXpPerTile(). */
+	private double bestXpPerTile;
 	@Inject
 	private RoutingNextStopOverlay routingNextStopOverlay;
 	@Inject
@@ -257,6 +268,10 @@ public class PortTasksPlugin extends Plugin
 	public static final String CONFIG_GROUP = "porttasks";
 	private static final String CONFIG_KEY_LEGS = "routingLearnedLegs";
 	private static final String CONFIG_KEY_TASK_COLOURS = "taskColours";
+	/** Settings (outside the routing ones) that change how the board is marked or its tooltip. */
+	private static final Set<String> BOARD_KEYS = Set.of("noticeBoardHideOpacity", "noticeBoardHideIncompletable",
+		"noticeBoardHideBounty", "noticeBoardHideCourier", "noticeBoardHideUntagged", "highlightTaskConflicts",
+		"taskConflictColor", "minColor", "maxColor");
 	/** Task -> colour picked for it in the side panel (RGB); see taskColourKey. Kept in the profile. */
 	private static final class TaskColours extends HashMap<String, Integer>
 	{
@@ -512,7 +527,12 @@ public class PortTasksPlugin extends Plugin
 				{
 					rescoreBoard();
 				}
+				rebuildView();
 			});
+		}
+		if (BOARD_KEYS.contains(event.getKey()))
+		{
+			clientThread.invokeLater(this::boardChanged);
 		}
 		switch (event.getKey())
 		{
@@ -606,6 +626,7 @@ public class PortTasksPlugin extends Plugin
 			{
 				rescoreBoard();
 			}
+			rebuildView();
 		}
 		else if (varbitId == VarbitID.SAILING_BOAT_FACILITY_LOCKEDIN)
 		{
@@ -614,11 +635,13 @@ public class PortTasksPlugin extends Plugin
 		else if (varbitId == VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE)
 		{
 			onMoveModeChanged(event.getValue());
+			rebuildView();
 		}
 		else if (RoutingDiagnostics.BOAT_VARBITS.containsKey(varbitId))
 		{
 			routingDiagnostics.logBoatVarbit(varbitId, event.getValue());
 			routingService.replan(courierTasks);
+			rebuildView();
 		}
 	}
 
@@ -726,6 +749,71 @@ public class PortTasksPlugin extends Plugin
 		clientThread.invokeLater(this::scanPortTaskBoard);
 	}
 
+	/**
+	 * The board closed: stop re-scoring it on every crate moved. The side list keeps showing its last ranking
+	 * until another board is opened.
+	 */
+	@SuppressWarnings("unused")
+	@Subscribe
+	private void onWidgetClosed(final WidgetClosed event)
+	{
+		if (event.getGroupId() != InterfaceID.PORT_TASK_BOARD)
+		{
+			return;
+		}
+		offeredTasks.clear();
+		boardScores = new HashMap<>();
+		boardChanged();
+	}
+
+	/** Recomputes the board marks, and tells the tooltip its text may be stale. Client thread. */
+	private void boardChanged()
+	{
+		boardMarks = TaskHighlight.marks(this);
+		boardVersion++;
+	}
+
+	/** Increases whenever what is shown about the board changes (scores, marks, settings). */
+	public int boardVersion()
+	{
+		return boardVersion;
+	}
+
+	/**
+	 * A courier task's XP per tile of its own route (pickup to delivery), with the planner's XP and distances
+	 * (learned where known). 0 if unknown.
+	 */
+	public double xpPerTile(CourierTaskData d)
+	{
+		Integer xp = xpLearner.xp(d.getId());
+		double xpValue = xp != null ? xp : TaskReward.getIntRewardForTask(d.getDbrow());
+		double tiles = taskTiles(d);
+		return tiles > 0 && Double.isFinite(tiles) ? xpValue / tiles : 0;
+	}
+
+	/** Sailing distance of a courier task's own route, pickup to delivery (learned where known). */
+	public double taskTiles(CourierTaskData d)
+	{
+		return routingService.graph().distance(d.getCargoLocation(), d.getDeliveryLocation());
+	}
+
+	/** This task's XP per tile as a share of the best task's (0-1), for the tooltip's colour. */
+	public double xpPerTileShare(CourierTaskData d)
+	{
+		return bestXpPerTile > 0 ? Math.min(1, xpPerTile(d) / bestXpPerTile) : 0;
+	}
+
+	/** Recomputed when a board opens and when learned legs change (about 400 tasks; cheap, but not per frame). */
+	private void updateBestXpPerTile()
+	{
+		double best = 0;
+		for (CourierTaskData d : CourierTaskData.all())
+		{
+			best = Math.max(best, xpPerTile(d));
+		}
+		bestXpPerTile = best;
+	}
+
 	@SuppressWarnings("unused")
 	@Subscribe
 	private void onMenuEntryAdded(final MenuEntryAdded event)
@@ -779,6 +867,10 @@ public class PortTasksPlugin extends Plugin
 		if (sailingLevel != this.sailingLevel)
 		{
 			this.sailingLevel = sailingLevel;
+			if (!offeredTasks.isEmpty())
+			{
+				rescoreBoard();
+			}
 		}
 	}
 
@@ -827,6 +919,7 @@ public class PortTasksPlugin extends Plugin
 					+ ": nothing in your plan there. Next stop is " + nextName + ". Shift-click to dock anyway.", null);
 				overheadWarning = "Wrong port - next stop: " + nextName;
 				overheadWarningUntil = client.getTickCount() + 8;
+				rebuildView();
 				log.info("[routing] blocked docking at {} (next stop {})", wrong.getName(), nextName);
 			}
 		}
@@ -842,18 +935,44 @@ public class PortTasksPlugin extends Plugin
 		return depositGuard.holdsCourierCrate(courierTasks);
 	}
 
-	/**
-	 * Routing extension: the warning to show above the player, if any: a recently blocked dock; a standing
-	 * wrong-port reminder (docked, holding a crate, nothing planned here); or a wrong-crate reminder (docked
-	 * where deliveries are due, holding a crate for another port).
-	 */
-	public String routingOverheadWarning()
+	/** Routing extension: what the port overlays show (see PortView). */
+	PortView view()
 	{
-		if (overheadWarning != null && client.getTickCount() <= overheadWarningUntil)
+		return view;
+	}
+
+	/**
+	 * Routing extension: recomputes what the port overlays show. Called on the events that change it (task
+	 * progress, the plan, the inventory, the port the player is at, settings), never per frame.
+	 */
+	private void rebuildView()
+	{
+		PortLocation docked = boatLocator.dockedPort();
+		view = PortView.build(courierTasks, routingService, docked, config, overheadWarning(docked), this::cargoName);
+	}
+
+	/** "Crate of lead" -> "lead". Client thread only. */
+	private String cargoName(int itemId)
+	{
+		String name = itemManager.getItemComposition(itemId).getName();
+		if (name == null || name.isEmpty() || "null".equals(name))
+		{
+			return "cargo";
+		}
+		return name.startsWith("Crate of ") ? name.substring("Crate of ".length()) : name;
+	}
+
+	/**
+	 * Routing extension: the warning to show above the player at this port, if any: a recently blocked dock; a
+	 * standing wrong-port reminder (docked, holding a crate, nothing planned here); or a wrong-crate reminder
+	 * (docked where deliveries are due, holding a crate for another port).
+	 */
+	private String overheadWarning(PortLocation docked)
+	{
+		if (overheadWarning != null)
 		{
 			return overheadWarning;
 		}
-		PortLocation docked = routingService.dockedPort();
 		if (config.routingBlockWrongDock() && carryingCargo() && routingService.plan() != null && docked != null
 			&& !routingService.hasWorkAt(docked))
 		{
@@ -875,6 +994,10 @@ public class PortTasksPlugin extends Plugin
 		{
 			bagCounter.onInventoryChanged(event.getItemContainer(), client.getTickCount());
 		}
+		if ((event.getContainerId() == InventoryID.INV || event.getContainerId() == InventoryID.WORN) && !courierTasks.isEmpty())
+		{
+			rebuildView();
+		}
 	}
 
 	@SuppressWarnings("unused")
@@ -892,6 +1015,20 @@ public class PortTasksPlugin extends Plugin
 			else
 			{
 				legTracker.sample(boatLocator.boatWorldPoint());
+			}
+		}
+		// Whether the player is at a port on foot depends on where they stand, which has no event: one cheap check
+		// per tick while tasks are held, and the view is only rebuilt when the answer (or a timed warning) changes.
+		if (!courierTasks.isEmpty() || overheadWarning != null)
+		{
+			boolean warningOver = overheadWarning != null && client.getTickCount() > overheadWarningUntil;
+			if (warningOver)
+			{
+				overheadWarning = null;
+			}
+			if (warningOver || boatLocator.dockedPort() != view.dockedPort)
+			{
+				rebuildView();
 			}
 		}
 		// prune tracked objects that have passed their timer
@@ -1077,6 +1214,7 @@ public class PortTasksPlugin extends Plugin
 
 	private void saveWidgetTags()
 	{
+		boardChanged();
 		if (widgetTags.isEmpty())
 		{
 			configManager.unsetConfiguration(CONFIG_GROUP, CONFIG_KEY_TAGS);
@@ -1140,6 +1278,7 @@ public class PortTasksPlugin extends Plugin
 
 			offeredTasks.put(dbrow, new OfferedTaskData(child, levelRequired));
 		}
+		updateBestXpPerTile();
 		rescoreBoard();
 	}
 
@@ -1161,6 +1300,7 @@ public class PortTasksPlugin extends Plugin
 		if (offered.isEmpty())
 		{
 			boardScores = new HashMap<>();
+			boardChanged();
 			return;
 		}
 		PortLocation board = offered.get(0).getNoticeBoard();
@@ -1177,6 +1317,7 @@ public class PortTasksPlugin extends Plugin
 				rankValue(s, by), String.join(", ", s.wantedDrops), s.detourColor));
 		}
 		boardScores = byDbrow;
+		boardChanged();
 		SwingUtilities.invokeLater(() -> pluginPanel.showBoard(board, by.toString(), rows));
 	}
 
@@ -1237,6 +1378,7 @@ public class PortTasksPlugin extends Plugin
 			{
 				rescoreBoard();
 			}
+			rebuildView();
 		}
 	}
 
@@ -1245,6 +1387,7 @@ public class PortTasksPlugin extends Plugin
 	{
 		routingService.graph().setLearned(config.routingLearnLegs()
 			? legLearner.estimates(config.routingLegEstimate()) : Collections.emptyList());
+		updateBestXpPerTile();
 	}
 
 	/** Routing extension: ticks since the current leg started. */
@@ -1453,6 +1596,7 @@ public class PortTasksPlugin extends Plugin
 		{
 			rescoreBoard();
 		}
+		rebuildView();
 	}
 
 	private void clearTasksForReload()
@@ -1498,6 +1642,7 @@ public class PortTasksPlugin extends Plugin
 		{
 			configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_TASK_COLOURS, gson.toJson(taskColours));
 		}
+		clientThread.invokeLater(this::rebuildView);
 	}
 
 	private void putTaskColour(int slot, int dbrow, Color colour)

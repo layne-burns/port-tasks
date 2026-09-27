@@ -134,12 +134,6 @@ public final class RoutingService
 		return false;
 	}
 
-	/** The port the player is at right now (docked, or on the dock by the boat), or null at sea / away. */
-	public PortLocation dockedPort()
-	{
-		return boats.dockedPort();
-	}
-
 	/** Port where the boat was last docked (kept while at sea): the start for planning. Null if unknown. */
 	public PortLocation boatPort()
 	{

@@ -3,11 +3,9 @@ package com.nucleon.porttasks;
 import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.LegTracker;
-import com.nucleon.porttasks.routing.RoutePlanner;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
 import net.runelite.client.game.ItemManager;
@@ -22,7 +20,7 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
  *    port comes first as "Here");
  *  - the leg under way: tiles sailed and time, against the planning estimate; once docked, the last leg;
  *  - the port bags received this session, by type and size.
- * Everything shown is kept up to date by events (and the per-tick leg sample); rendering only reads it.
+ * The route lines are worked out in PortView when the plan or tasks change; rendering only reads them.
  */
 class RoutingNextStopOverlay extends OverlayPanel
 {
@@ -132,86 +130,16 @@ class RoutingNextStopOverlay extends OverlayPanel
 
 	private boolean renderRoute()
 	{
-		RoutePlanner.Plan plan = plugin.routingService.plan();
-		if (!config.routingNextStopPanel() || plan == null || plan.stops.isEmpty())
+		List<PortView.Line> lines = plugin.view().routeLines;
+		if (lines.isEmpty())
 		{
 			return false;
 		}
-		PortLocation boatPort = plugin.routingService.dockedPort();
-
 		panelComponent.getChildren().add(TitleComponent.builder().text("Courier route").color(config.routingLegColor()).build());
-		// Work left at the boat's own port comes first as "Here"; then the next stop and the one after.
-		boolean startsHere = plan.stops.get(0).port == boatPort;
-		String[] labels = startsHere ? new String[]{"Here", "Next", "Then"} : new String[]{"Next", "Then"};
-		int shown = 0;
-		while (shown < labels.length && shown < plan.stops.size())
+		for (PortView.Line line : lines)
 		{
-			RoutePlanner.Stop stop = plan.stops.get(shown);
-			panelComponent.getChildren().add(LineComponent.builder()
-				.left(labels[shown] + ": " + stop.port.getName())
-				.leftColor(shown == 0 ? Color.YELLOW : Color.WHITE)
-				.build());
-			for (String action : actions(stop))
-			{
-				panelComponent.getChildren().add(LineComponent.builder().left("  " + action).leftColor(Color.LIGHT_GRAY).build());
-			}
-			shown++;
-		}
-		int remaining = plan.stops.size() - shown;
-		if (remaining > 0)
-		{
-			panelComponent.getChildren().add(LineComponent.builder()
-				.left("+" + remaining + " more stop" + (remaining == 1 ? "" : "s"))
-				.leftColor(Color.GRAY)
-				.build());
+			panelComponent.getChildren().add(LineComponent.builder().left(line.text).leftColor(line.colour).build());
 		}
 		return true;
-	}
-
-	private List<String> actions(RoutePlanner.Stop stop)
-	{
-		List<String> lines = new ArrayList<>();
-		for (int id : stop.pickups)
-		{
-			CourierTask t = task(id);
-			if (t != null)
-			{
-				int left = t.getData().cargoAmount - t.getCargoTaken();
-				lines.add("Pick up " + left + " " + cargoName(t));
-			}
-		}
-		for (int id : stop.deliveries)
-		{
-			CourierTask t = task(id);
-			if (t != null)
-			{
-				int left = t.getData().cargoAmount - t.getDelivered();
-				lines.add("Deliver " + left + " " + cargoName(t));
-			}
-		}
-		return lines;
-	}
-
-	private CourierTask task(int taskId)
-	{
-		for (CourierTask t : plugin.courierTasks)
-		{
-			if (t.getData().getId() == taskId)
-			{
-				return t;
-			}
-		}
-		return null;
-	}
-
-	/** "Crate of lead" -> "lead"; falls back to the task name if the item is unknown. */
-	String cargoName(CourierTask t)
-	{
-		String name = itemManager.getItemComposition(t.getData().cargo).getName();
-		if (name == null || name.isEmpty() || "null".equals(name))
-		{
-			return t.getData().taskName;
-		}
-		return name.startsWith("Crate of ") ? name.substring("Crate of ".length()) : name;
 	}
 }

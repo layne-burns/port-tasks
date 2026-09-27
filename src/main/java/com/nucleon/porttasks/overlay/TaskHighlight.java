@@ -5,21 +5,48 @@ import com.nucleon.porttasks.OfferedTaskData;
 import com.nucleon.porttasks.PortTasksPlugin;
 import com.nucleon.porttasks.WidgetTag;
 import com.nucleon.porttasks.enums.BountyTaskData;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.Stroke;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
-import net.runelite.client.ui.overlay.OverlayUtil;
 
-import javax.inject.Inject;
-import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
-
+/**
+ * Marks the tasks on an open notice board: a border for tagged tasks, and a fill that dims hidden ones
+ * (untagged, too high a level, bounty or courier, bag size filtered out) or colours bounty tasks you can't
+ * take alongside one you hold. Which task gets what is worked out by {@link #marks} when the board, your
+ * tasks, tags or settings change; only the drawing happens per frame.
+ */
 public class TaskHighlight extends Overlay
 {
+	/** How one offered task is marked. Immutable. */
+	public static final class Mark
+	{
+		/** Tag border colour, or null. */
+		final Color border;
+		/** Fill (with its alpha), or null. */
+		final Color fill;
+
+		Mark(Color border, Color fill)
+		{
+			this.border = border;
+			this.fill = fill;
+		}
+	}
+
+	private static final Stroke TAG_STROKE = new BasicStroke(2);
+
 	private final Client client;
 	private final PortTasksPlugin plugin;
 
@@ -34,33 +61,14 @@ public class TaskHighlight extends Overlay
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 	}
 
-	@Override
-	public Dimension render (Graphics2D graphics)
+	/** The marks for the tasks on the board now (dbrow -> mark; unmarked tasks are left out). Client thread. */
+	public static Map<Integer, Mark> marks(PortTasksPlugin plugin)
 	{
-		Widget taskBoard = client.getWidget(InterfaceID.PortTaskBoard.CONTAINER);
-		if (taskBoard == null  || taskBoard.isHidden())
-		{
-			return null;
-		}
-
-		Widget worldMap = client.getWidget(InterfaceID.Worldmap.CONTENT);
-		if (worldMap != null && !worldMap.isHidden())
-		{
-			return null;
-		}
-
-		Widget taskInfo = client.getWidget(InterfaceID.PortTaskInfo.WINDOW);
-		if (taskInfo != null && !taskInfo.isHidden())
-		{
-			return null;
-		}
-
 		Map<Integer, OfferedTaskData> offered = plugin.getOfferedTasks();
 		if (offered.isEmpty())
 		{
-			return null;
+			return Collections.emptyMap();
 		}
-
 		Map<Integer, Color> tagColors = new HashMap<>();
 		for (WidgetTag tag : plugin.getWidgetTags())
 		{
@@ -69,89 +77,91 @@ public class TaskHighlight extends Overlay
 				tagColors.put(tag.getDbrow(), tag.getColor());
 			}
 		}
+		int alpha = plugin.getNoticeBoardHideOpactity();
+		Color dim = new Color(0, 0, 0, alpha);
+		Color conflictColor = plugin.getTaskConflictColor();
+		Color conflict = new Color(conflictColor.getRed(), conflictColor.getGreen(), conflictColor.getBlue(), alpha);
 
-
+		Map<Integer, Mark> marks = new HashMap<>();
 		for (Map.Entry<Integer, OfferedTaskData> entry : offered.entrySet())
 		{
 			int dbrow = entry.getKey();
-			OfferedTaskData data = entry.getValue();
-			Widget widget = data.getTaskWidget();
-			if (widget == null || widget.isHidden())
-			{
-				continue;
-			}
 			BountyTaskData bounty = BountyTaskData.getByDbrow(dbrow);
-			boolean isBounty = bounty != null;
-
 			CourierTaskData courier = CourierTaskData.getByDbrow(dbrow);
-			boolean isCourier = courier != null;
+			// You can't hold two bounty tasks for the same item. (Two couriers with the same cargo are fine.)
+			boolean conflicts = bounty != null && plugin.getBountyTasks().stream()
+				.anyMatch(task -> task.getData().getItemId() == bounty.getItemId());
 
-			// You are prevented from taking two courier tasks of the same cargo
-			boolean conflicts = isBounty ? plugin.getBountyTasks().stream()
-				.anyMatch(task -> task.getData().getItemId() == bounty.getItemId()) : false;
-
-			Color tagColor = tagColors.get(dbrow);
-			// Always draw a border if the task is tagged
-			if (tagColor != null)
+			Color border = tagColors.get(dbrow);
+			Color fill = null;
+			if (border == null && plugin.isNoticeBoardHideUntagged())
 			{
-				renderWidgetTag(graphics, widget, tagColor, 2);
+				fill = dim;
 			}
-			// In order to inadvertently make the tint darker than intended
-			// the first time the widget is hidden we should continue to the next widget
-			else if (plugin.isNoticeBoardHideUntagged())
+			else if (plugin.isNoticeBoardHideIncompletable() && plugin.getSailingLevel() < entry.getValue().getLevelRequired())
 			{
-				renderWidgetHider(graphics, widget, Color.BLACK, plugin.getNoticeBoardHideOpactity());
-				continue;
+				fill = dim;
 			}
-			if (plugin.isNoticeBoardHideIncompletable() && plugin.getSailingLevel() < data.getLevelRequired())
+			else if (plugin.isNoticeBoardHideBounty() && bounty != null)
 			{
-				renderWidgetHider(graphics, widget, Color.BLACK, plugin.getNoticeBoardHideOpactity());
-				continue;
+				fill = dim;
 			}
-			if (plugin.isNoticeBoardHideBounty() && isBounty)
+			else if (courier != null && (plugin.isNoticeBoardHideCourier() || plugin.bagFilterHides(courier)))
 			{
-				renderWidgetHider(graphics, widget, Color.BLACK, plugin.getNoticeBoardHideOpactity());
-				continue;
+				fill = dim;
 			}
-			if (isCourier && (plugin.isNoticeBoardHideCourier() || plugin.bagFilterHides(courier)))
+			else if (plugin.isHighlightTaskConflicts() && conflicts)
 			{
-				renderWidgetHider(graphics, widget, Color.BLACK, plugin.getNoticeBoardHideOpactity());
-				continue;
+				fill = conflict;
 			}
-			if (plugin.isHighlightTaskConflicts() && conflicts)
+			if (border != null || fill != null)
 			{
-				renderWidgetHider(graphics, widget, plugin.getTaskConflictColor(), plugin.getNoticeBoardHideOpactity());
-				continue;
+				marks.put(dbrow, new Mark(border, fill));
 			}
 		}
+		return marks;
+	}
 
+	@Override
+	public Dimension render(Graphics2D graphics)
+	{
+		Map<Integer, Mark> marks = plugin.getBoardMarks();
+		if (marks.isEmpty())
+		{
+			return null;
+		}
+		Widget taskBoard = client.getWidget(InterfaceID.PortTaskBoard.CONTAINER);
+		if (taskBoard == null || taskBoard.isHidden())
+		{
+			return null;
+		}
+		Widget worldMap = client.getWidget(InterfaceID.Worldmap.CONTENT);
+		Widget taskInfo = client.getWidget(InterfaceID.PortTaskInfo.WINDOW);
+		if (worldMap != null && !worldMap.isHidden() || taskInfo != null && !taskInfo.isHidden())
+		{
+			return null;
+		}
+		for (Map.Entry<Integer, OfferedTaskData> entry : plugin.getOfferedTasks().entrySet())
+		{
+			Mark mark = marks.get(entry.getKey());
+			Widget widget = entry.getValue().getTaskWidget();
+			if (mark == null || widget == null || widget.isHidden())
+			{
+				continue;
+			}
+			Rectangle r = widget.getBounds();
+			if (mark.fill != null)
+			{
+				graphics.setColor(mark.fill);
+				graphics.fill(r);
+			}
+			if (mark.border != null)
+			{
+				graphics.setColor(mark.border);
+				graphics.setStroke(TAG_STROKE);
+				graphics.draw(r);
+			}
+		}
 		return null;
-	}
-
-	private static Rectangle renderWidgetTag(Graphics2D graphics, Widget widget, Color color, float borderWidth)
-	{
-		Rectangle widgetBounds = widget.getBounds();
-		Stroke stroke = new BasicStroke(borderWidth);
-		Color clear = new Color(0, 0, 0, 0);
-		OverlayUtil.renderPolygon(graphics, rectangleToPolygon(widgetBounds), color, clear, stroke);
-		return widgetBounds;
-	}
-
-	private static Rectangle renderWidgetHider(Graphics2D graphics, Widget widget, Color color, int opacity)
-	{
-		Rectangle widgetBounds = widget.getBounds();
-		Stroke stroke = new BasicStroke(0);
-		Color overlay = new Color(color.getRed(), color.getGreen(), color.getBlue(), opacity);
-		// No stroke, just fill
-		Color transparent = new Color(0, 0, 0, 0);
-		OverlayUtil.renderPolygon(graphics, rectangleToPolygon(widgetBounds), transparent, overlay, stroke);
-		return widgetBounds;
-	}
-
-	private static Polygon rectangleToPolygon(Rectangle rectangle)
-	{
-		int[] x_points = {rectangle.x, rectangle.x + rectangle.width, rectangle.x + rectangle.width, rectangle.x};
-		int[] y_points = {rectangle.y, rectangle.y, rectangle.y + rectangle.height, rectangle.y + rectangle.height};
-		return new Polygon(x_points, y_points, 4);
 	}
 }

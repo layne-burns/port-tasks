@@ -12,6 +12,7 @@ import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
+import net.runelite.api.Player;
 import net.runelite.api.GroundObject;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.Point;
@@ -54,15 +55,11 @@ public class PortTaskModelRenderer extends Overlay
 		{
 			highlightNoticeboards(graphics);
 		}
-		if (plugin.isHighlightHelmMissingCargo())
+		// One outline and one label for all part-loaded tasks together (worked out in PortView).
+		PortView view = plugin.view();
+		if (plugin.isHighlightHelmMissingCargo() && view.helmMissing > 0)
 		{
-			for (CourierTask courierTask : plugin.courierTasks)
-			{
-				if (courierTask.getCargoTaken() > 0 && courierTask.getCargoTaken() < courierTask.getData().cargoAmount)
-				{
-					highlightLocalPlayerBoatHelm(graphics, (courierTask.getData().cargoAmount - courierTask.getCargoTaken()), courierTask.getOverlayColor());
-				}
-			}
+			highlightLocalPlayerBoatHelm(graphics, view.helmMissing, view.helmColour);
 		}
 		if (plugin.isHighlightCargoHolds() && !plugin.isLockedIn())
 		{
@@ -107,9 +104,14 @@ public class PortTaskModelRenderer extends Overlay
 
 	public void highlightLocalPlayerBoatHelm(Graphics2D graphics, int cargoMissing, Color color)
 	{
+		Player player = client.getLocalPlayer();
+		if (player == null)
+		{
+			return;
+		}
 		for (GameObject helm : plugin.getHelms())
 		{
-			if (helm.getWorldView().getId() == client.getLocalPlayer().getWorldView().getId())
+			if (helm.getWorldView().getId() == player.getWorldView().getId())
 			{
 				modelOutlineRenderer.drawOutline(helm, 2, color, 250);
 				drawObjectLabel(graphics, helm, cargoMissing);

@@ -17,6 +17,11 @@ public class LegLearningTest
 	private static final PortLocation SARIM = PortLocation.PORT_SARIM;
 	private static final PortLocation PANDEMONIUM = PortLocation.PANDEMONIUM;
 
+	/** The learner's "save" for tests that don't check saving. */
+	private static void ignore(String json)
+	{
+	}
+
 	private static LegTracker.Leg leg(PortLocation from, PortLocation to, double tiles, int ticks)
 	{
 		return new LegTracker.Leg(from, to, tiles, ticks);
@@ -63,7 +68,7 @@ public class LegLearningTest
 	@Test
 	public void minimumAndMedianEitherDirection()
 	{
-		LegLearner l = new LegLearner(null, new Gson(), json -> { });
+		LegLearner l = new LegLearner(null, new Gson(), LegLearningTest::ignore);
 		l.record(leg(SARIM, PANDEMONIUM, 150, 250), 160);
 		l.record(leg(PANDEMONIUM, SARIM, 140, 230), 160);
 		l.record(leg(SARIM, PANDEMONIUM, 170, 280), 160);
@@ -82,7 +87,7 @@ public class LegLearningTest
 	@Test
 	public void detoursAreIgnoredAndOnlyTheLastFewKept()
 	{
-		LegLearner l = new LegLearner(null, new Gson(), json -> { });
+		LegLearner l = new LegLearner(null, new Gson(), LegLearningTest::ignore);
 		assertFalse(l.record(leg(SARIM, PANDEMONIUM, 321, 500), 160));
 		assertTrue(l.record(leg(SARIM, PANDEMONIUM, 320, 500), 160));
 		assertTrue("no estimate yet: anything goes", l.record(leg(SARIM, PortLocation.ENTRANA, 5000, 900), Double.POSITIVE_INFINITY));
@@ -107,7 +112,7 @@ public class LegLearningTest
 		String[] saved = new String[1];
 		LegLearner l = new LegLearner(null, new Gson(), json -> saved[0] = json);
 		l.record(leg(SARIM, PANDEMONIUM, 150, 250), 160);
-		LegLearner back = new LegLearner(saved[0], new Gson(), json -> { });
+		LegLearner back = new LegLearner(saved[0], new Gson(), LegLearningTest::ignore);
 		assertEquals(150, only(back.estimates(LegLearner.Estimate.MINIMUM)).tiles, EPS);
 		back.clear();
 		assertTrue(back.estimates(LegLearner.Estimate.MINIMUM).isEmpty());
@@ -128,7 +133,7 @@ public class LegLearningTest
 		double drawn = g.distance(SARIM, PANDEMONIUM);
 		assertTrue(Double.isFinite(drawn));
 
-		LegLearner l = new LegLearner(null, new Gson(), json -> { });
+		LegLearner l = new LegLearner(null, new Gson(), LegLearningTest::ignore);
 		l.record(leg(SARIM, PANDEMONIUM, drawn + 37, 300), drawn);
 		g.setLearned(l.estimates(LegLearner.Estimate.MINIMUM));
 		assertEquals(drawn + 37, g.distance(SARIM, PANDEMONIUM), EPS);
@@ -144,7 +149,7 @@ public class LegLearningTest
 		RouteGraph g = new RouteGraph();
 		PortLocation far = PortLocation.ENTRANA;
 		double viaBefore = g.distance(SARIM, PANDEMONIUM) + g.distance(PANDEMONIUM, far);
-		LegLearner l = new LegLearner(null, new Gson(), json -> { });
+		LegLearner l = new LegLearner(null, new Gson(), LegLearningTest::ignore);
 		l.record(leg(SARIM, PANDEMONIUM, 1, 10), Double.POSITIVE_INFINITY);
 		g.setLearned(l.estimates(LegLearner.Estimate.MINIMUM));
 		assertTrue(g.distance(SARIM, far) <= 1 + g.distance(PANDEMONIUM, far) + EPS);

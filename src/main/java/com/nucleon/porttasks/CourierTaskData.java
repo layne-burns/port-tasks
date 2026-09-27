@@ -27,8 +27,8 @@
 package com.nucleon.porttasks;
 
 import com.nucleon.porttasks.enums.PortLocation;
-import com.nucleon.porttasks.enums.PortPaths;
-import com.nucleon.porttasks.enums.TaskReward;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -46,19 +46,15 @@ public final class CourierTaskData
 	private final PortLocation noticeBoard;
 	private final PortLocation cargoLocation;
 	private final PortLocation deliveryLocation;
-	public final PortPaths dockMarkers;
 	public final String taskName;
 	public final int cargo;
 	public final int cargoAmount;
-	private final double xpPerTile;
 
 	private static final Set<Integer> VARBIT_VALUES = new HashSet<>();
 	private static final Map<Integer, CourierTaskData> BY_DBROW = new HashMap<>();
 	private static final Map<Integer, CourierTaskData> BY_ID = new HashMap<>();
 
-	private static double MAX_XP_PER_TILE;
-
-	private CourierTaskData(int dbrow, int id, int levelRequired, PortLocation noticeBoard, PortLocation cargoLocation, PortLocation deliveryLocation, PortPaths dockMarkers, String taskName, int cargo, int cargoAmount, double xpPerTile)
+	private CourierTaskData(int dbrow, int id, int levelRequired, PortLocation noticeBoard, PortLocation cargoLocation, PortLocation deliveryLocation, String taskName, int cargo, int cargoAmount)
 	{
 		this.dbrow = dbrow;
 		this.id = id;
@@ -66,11 +62,9 @@ public final class CourierTaskData
 		this.noticeBoard = noticeBoard;
 		this.cargoLocation = cargoLocation;
 		this.deliveryLocation = deliveryLocation;
-		this.dockMarkers = dockMarkers;
 		this.taskName = taskName;
 		this.cargo = cargo;
 		this.cargoAmount = cargoAmount;
-		this.xpPerTile = xpPerTile;
 	}
 
 	public static void loadFromCache(Client client)
@@ -78,7 +72,6 @@ public final class CourierTaskData
 		BY_DBROW.clear();
 		BY_ID.clear();
 		VARBIT_VALUES.clear();
-		MAX_XP_PER_TILE = 0.0;
 
 		for (int rowId : client.getDBTableRows(DBTableID.PortTask.ID))
 		{
@@ -92,11 +85,6 @@ public final class CourierTaskData
 			BY_DBROW.put(data.dbrow, data);
 			BY_ID.put(data.id, data);
 			VARBIT_VALUES.add(data.id);
-
-			if (data.xpPerTile > MAX_XP_PER_TILE)
-			{
-				MAX_XP_PER_TILE = data.xpPerTile;
-			}
 		}
 	}
 
@@ -147,19 +135,13 @@ public final class CourierTaskData
 			return null;
 		}
 
-		PortPaths dockMarkers = PortPaths.findPath(cargoLocation, deliveryLocation);
-
 		String taskName = (String) client.getDBTableField(dbrow, DBTableID.PortTask.COL_NAME, 0)[0];
 
 
 		Integer cargo = getIntField(client, dbrow, DBTableID.PortTask.COL_CARGO, 0);
 		Integer cargoAmount = getIntField(client, dbrow, DBTableID.PortTask.COL_CARGO, 1);
 
-		int reward = TaskReward.getIntRewardForTask(dbrow);
-		double distance = dockMarkers.getDistance();
-		double xpPerTile = distance > 0 ? ( reward / distance) : 0.0;
-
-		return new CourierTaskData(dbrow, id, level, noticeBoard, cargoLocation, deliveryLocation, dockMarkers, taskName, cargo, cargoAmount, xpPerTile);
+		return new CourierTaskData(dbrow, id, level, noticeBoard, cargoLocation, deliveryLocation, taskName, cargo, cargoAmount);
 	}
 
 	private static Integer getIntField(Client client, int rowId, int col, int tupleIndex, int objectIndex)
@@ -192,9 +174,10 @@ public final class CourierTaskData
 		return BY_ID.get(id);
 	}
 
-	public double getXpPerTileRatio()
+	/** Every courier task read from the cache. */
+	public static Collection<CourierTaskData> all()
 	{
-		return MAX_XP_PER_TILE > 0.0 ? (xpPerTile / MAX_XP_PER_TILE) : 0.0;
+		return Collections.unmodifiableCollection(BY_DBROW.values());
 	}
 
 }

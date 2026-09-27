@@ -3,19 +3,12 @@ package com.nucleon.porttasks.enums;
 import com.nucleon.porttasks.RelativeMove;
 import java.util.List;
 import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 
 
 @Getter
-@Slf4j
 public enum PortPaths
 {
-	DEFAULT(
-		PortLocation.EMPTY,
-		PortLocation.EMPTY
-		// Sailing >= 0, used in 0 tasks
-	),
 	CATHERBY_BRIMHAVEN(
 		PortLocation.CATHERBY,
 		PortLocation.BRIMHAVEN,
@@ -2501,19 +2494,6 @@ public enum PortPaths
 		this.end = end;
 		this.pathPoints = List.of(pathPoints);
 		this.distance = computeDistance();
-	}
-	/** The drawn path between two ports, in either direction (DEFAULT if there is none). */
-	public static PortPaths findPath(PortLocation a, PortLocation b)
-	{
-		for (PortPaths p : values())
-		{
-			if (p.start == a && p.end == b || p.start == b && p.end == a)
-			{
-				return p;
-			}
-		}
-		log.info("Failed to find route between {} and {}", a, b);
-		return DEFAULT;
 	}
 
 

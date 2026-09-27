@@ -31,168 +31,101 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.awt.Stroke;
 import java.util.List;
-import java.util.Map;
-
 import javax.inject.Inject;
-
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.Perspective;
 import net.runelite.api.Point;
-
 import net.runelite.client.ui.overlay.Overlay;
-
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 
+/**
+ * Dock ledger tables used by a held task: the tile is outlined in the colours of the tasks with work left
+ * there, with "Cargo: taken/needed" (pickup) or "Delivered: n/needed" (delivery) per task, stacked. What to
+ * show is worked out in PortView when tasks change; only the positions are computed here, since the camera
+ * moves every frame.
+ */
 class PortTasksLedgerOverlay extends Overlay
 {
+	private static final Color FILL = new Color(0, 0, 0, 50);
+	private static final Stroke EDGE = new BasicStroke(2);
+
 	private final Client client;
 	private final PortTasksPlugin plugin;
-	private final PortTasksConfig config;
 
 	@Inject
-	private PortTasksLedgerOverlay(Client client, PortTasksPlugin plugin, PortTasksConfig config)
+	private PortTasksLedgerOverlay(Client client, PortTasksPlugin plugin)
 	{
 		this.client = client;
 		this.plugin = plugin;
-		this.config = config;
-
 		setPosition(OverlayPosition.DYNAMIC);
 		setPriority(PRIORITY_HIGHEST);
 		setLayer(OverlayLayer.UNDER_WIDGETS);
 	}
 
 	@Override
-	public Dimension render(Graphics2D graphics)
+	public Dimension render(Graphics2D g)
 	{
-		renderOverlay(graphics);
-		return null;
-	}
-
-	private void renderOverlay(Graphics2D g)
-	{
-		// we need to track if a port courier task is sharing a ledger for delivery or cargo
-		Map<Integer, List<CourierTask>> ledgerUsageMap = new HashMap<>();
-		// we need to store a reference to an objectid and an overlay
-		Map<Integer, Integer> overlayCount = new HashMap<>();
-
-		//  looping through all the port tasks currently assigned
-		for (CourierTask task : plugin.courierTasks)
-		{	// ledger object from the port data enum
-			int pickupLedgerObjectID = task.getData().getCargoLocation().getLedgerObject();
-			int deliveryLedgerObjectID = task.getData().getDeliveryLocation().getLedgerObject();
-			// store a reference to them in the map, so we can render
-			// multicolored overlays for shared ledgers in port tasks
-			ledgerUsageMap.computeIfAbsent(pickupLedgerObjectID, k -> new ArrayList<>()).add(task);
-			ledgerUsageMap.computeIfAbsent(deliveryLedgerObjectID, k -> new ArrayList<>()).add(task);
+		PortView view = plugin.view();
+		if (view.ledgerLabels.isEmpty())
+		{
+			return null;
 		}
-
 		for (GameObject ledger : plugin.getLedgers())
 		{
-			int objectId = ledger.getId();
-			List<CourierTask> tasksAtLedger = ledgerUsageMap.get(objectId);
-			if (tasksAtLedger == null || tasksAtLedger.isEmpty())
+			List<PortView.LedgerLabel> labels = view.ledgerLabels.get(ledger.getId());
+			if (labels == null)
 			{
 				continue;
 			}
-
-			ObjectComposition comp = client.getObjectDefinition(objectId);
-			int size = comp.getSizeX();
-
-			Polygon poly = Perspective.getCanvasTileAreaPoly(client, ledger.getLocalLocation(), size);
+			ObjectComposition comp = client.getObjectDefinition(ledger.getId());
+			Polygon poly = Perspective.getCanvasTileAreaPoly(client, ledger.getLocalLocation(), comp.getSizeX());
 			if (poly != null)
-			{	// we stored the tasks that are using this ledger,
-				// so we can draw a dynamic tile
-				// TODO: fix this later (pickup ledgers still overlay 1/1)
-				Color[] colors = getOverlayColors(tasksAtLedger);
-				renderMultiColoredSquare(g, poly, colors);
-			}
-			// loop through the tasks at this ledger object, get the cargo information and render a text overlay
-			// for more than one task, store them in a overlayCount map and stack the text
-			int offsetIndex = overlayCount.getOrDefault(objectId, 0);
-			for (CourierTask task : tasksAtLedger)
 			{
-				int cargoTakenFromLedger = task.getCargoTaken();
-				int cargoDeliveredToLedger = task.getDelivered();
-				int cargoRequired = task.getData().getCargoAmount();
-
-				int pickupId = task.getData().getCargoLocation().getLedgerObject();
-				int deliveryId = task.getData().getDeliveryLocation().getLedgerObject();
-				boolean isPickup = objectId == pickupId && cargoTakenFromLedger < cargoRequired;
-				boolean isDelivery = objectId == deliveryId && cargoDeliveredToLedger < cargoRequired;
-
-				if (!isPickup && !isDelivery)
+				renderMultiColoredSquare(g, poly, labels);
+			}
+			for (int i = 0; i < labels.size(); i++)
+			{
+				String text = labels.get(i).text;
+				Point at = Perspective.getCanvasTextLocation(client, g, ledger.getLocalLocation(), text, 0);
+				if (at != null)
 				{
-					continue;
-				}
-				// so we know it's either a pickup or delivery, display the data of either
-				String label = isPickup
-						? String.format("Cargo: %d/%d", cargoTakenFromLedger, cargoRequired)
-						: String.format("Delivered: %d/%d", cargoDeliveredToLedger, cargoRequired);
-
-				Point textLocation = Perspective.getCanvasTextLocation(client, g, ledger.getLocalLocation(), label, 0);
-				if (textLocation != null)
-				{
-					int yOffset = 15 * offsetIndex;
-					Point raisedLocation = new Point(textLocation.getX(), textLocation.getY() - yOffset);
-					OverlayUtil.renderTextLocation(g, raisedLocation, label, Color.WHITE);
-					offsetIndex++;
+					OverlayUtil.renderTextLocation(g, new Point(at.getX(), at.getY() - 15 * i), text, Color.WHITE);
 				}
 			}
-			// +1 overlay on this ledger object
-			overlayCount.put(objectId, offsetIndex);
 		}
+		return null;
 	}
 
-	private void renderMultiColoredSquare(Graphics2D g, Polygon poly, Color... colors)
+	/** Fills the tile lightly and splits its edges between the tasks' colours. */
+	private static void renderMultiColoredSquare(Graphics2D g, Polygon poly, List<PortView.LedgerLabel> labels)
 	{
-		if (poly == null || poly.npoints < 2 || colors.length == 0)
+		if (poly.npoints < 2)
 		{
 			return;
 		}
-
-		g.setColor(new Color(0, 0, 0, 50));
+		g.setColor(FILL);
 		g.fillPolygon(poly);
-
-		int nPoints = poly.npoints;
-		int edgesPerColor = nPoints / colors.length;
-		int remainder = nPoints % colors.length;
-
-		int edgeIndex = 0;
-		for (int colorIndex = 0; colorIndex < colors.length; colorIndex++)
+		g.setStroke(EDGE);
+		int n = poly.npoints;
+		int perColour = n / labels.size();
+		int extra = n % labels.size();
+		int edge = 0;
+		for (int c = 0; c < labels.size(); c++)
 		{
-			int count = edgesPerColor + (colorIndex < remainder ? 1 : 0);
-			g.setColor(colors[colorIndex]);
-			g.setStroke(new BasicStroke(2));
-
-			for (int i = 0; i < count; i++, edgeIndex++)
+			g.setColor(labels.get(c).colour);
+			int count = perColour + (c < extra ? 1 : 0);
+			for (int i = 0; i < count; i++, edge++)
 			{
-				int p1 = edgeIndex % nPoints;
-				int p2 = (edgeIndex + 1) % nPoints;
-
-				int x1 = poly.xpoints[p1];
-				int y1 = poly.ypoints[p1];
-				int x2 = poly.xpoints[p2];
-				int y2 = poly.ypoints[p2];
-
-				g.drawLine(x1, y1, x2, y2);
+				int a = edge % n;
+				int b = (edge + 1) % n;
+				g.drawLine(poly.xpoints[a], poly.ypoints[a], poly.xpoints[b], poly.ypoints[b]);
 			}
 		}
-	}
-
-	private Color[] getOverlayColors(List<CourierTask> tasks)
-	{
-		Color[] colors = new Color[tasks.size()];
-		for (int i = 0; i < tasks.size(); i++)
-		{
-			colors[i] = tasks.get(i).getOverlayColor();
-		}
-		return colors;
 	}
 }

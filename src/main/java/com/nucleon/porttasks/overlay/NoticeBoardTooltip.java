@@ -30,7 +30,9 @@ public class NoticeBoardTooltip extends Overlay
 	private final TooltipManager tooltipManager;
 	private final Client client;
 	private final PortTasksPlugin plugin;
-
+	private int cachedDbrow = -1;
+	private int cachedVersion = -1;
+	private String cachedText;
 
 	@Inject
 	NoticeBoardTooltip(Client client, TooltipManager tooltipManager, PortTasksPlugin plugin)
@@ -70,45 +72,60 @@ public class NoticeBoardTooltip extends Overlay
 		{
 			return null;
 		}
-		Object task = getTask(dbrow);
+		// The text only changes with the hovered task or the board (scores, marks, settings), not per frame.
+		int version = plugin.boardVersion();
+		if (dbrow != cachedDbrow || version != cachedVersion)
+		{
+			cachedText = tooltipText(dbrow);
+			cachedDbrow = dbrow;
+			cachedVersion = version;
+		}
+		if (cachedText != null)
+		{
+			tooltipManager.add(new Tooltip(cachedText));
+		}
+		return null;
+	}
 
+	private String tooltipText(int dbrow)
+	{
+		Object task = getTask(dbrow);
 		if (task instanceof CourierTaskData)
 		{
 			CourierTaskData data = (CourierTaskData) task;
 			Color isAtCurLocation = data.getNoticeBoard() == data.getCargoLocation() ? Color.WHITE : Color.RED;
 			String sourceColorTag = toColTag(isAtCurLocation);
 			String endTag = "</col>";
-			int distance = (int) Math.round(data.getDockMarkers().getDistance());
-
-			double xpPerTileRatio = data.getXpPerTileRatio();
-			int xpPerTilePercent = (int) Math.round(xpPerTileRatio * 100.0);
-			Color xpColor = interpolateColor(plugin.getMinColor(), plugin.getMaxColor(), xpPerTileRatio);
-			String xpColorTag = toColTag(xpColor);
+			// The planner's numbers: learned leg lengths and XP where known.
+			double tiles = plugin.taskTiles(data);
+			double share = plugin.xpPerTileShare(data);
+			String xpColorTag = toColTag(interpolateColor(plugin.getMinColor(), plugin.getMaxColor(), share));
 
 			String tooltip = String.format(
 				"Source: %s%s%s<br>" +
 				"Destination: %s<br>" +
 				"Experience: %s xp<br>" +
-				"Distance: %d tiles<br>" +
-				"XP/Tile: %s%d%%%s<br>" +
+				"Distance: %.0f tiles<br>" +
+				"XP/Tile: %s%.2f%s (%.0f%% of best)<br>" +
 				"Amount of cargo: %d",
 				sourceColorTag,
-				data.getCargoLocation(),
+				data.getCargoLocation().getName(),
 				endTag,
-				data.getDeliveryLocation(),
+				data.getDeliveryLocation().getName(),
 				courierXp(data),
-				distance,
+				tiles,
 				xpColorTag,
-				xpPerTilePercent,
+				plugin.xpPerTile(data),
 				endTag,
+				share * 100,
 				data.getCargoAmount()
 			);
-			tooltipManager.add(new Tooltip(tooltip + routingLines(data)));
+			return tooltip + routingLines(data);
 		}
 		if (task instanceof BountyTaskData)
 		{
 			BountyTaskData data = (BountyTaskData) task;
-			String tooltip = String.format(
+			return String.format(
 				"Experience: %s<br>" +
 				"Items required: %d<br>" +
 				"Item rarity: 1 in %d",
@@ -116,7 +133,6 @@ public class NoticeBoardTooltip extends Overlay
 				data.getItemQuantity(),
 				data.getItemRarity()
 			);
-			tooltipManager.add(new Tooltip(tooltip));
 		}
 		return null;
 	}
