@@ -51,6 +51,14 @@ class RoutingBoardOverlay extends Overlay
 		{
 			return null;
 		}
+		// The board stays open under the task's accept window and the world map; the original overlays hide
+		// there too (TaskHighlight, NoticeBoardTooltip).
+		Widget taskInfo = client.getWidget(InterfaceID.PortTaskInfo.WINDOW);
+		Widget worldMap = client.getWidget(InterfaceID.Worldmap.CONTENT);
+		if (taskInfo != null && !taskInfo.isHidden() || worldMap != null && !worldMap.isHidden())
+		{
+			return null;
+		}
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 		for (Map.Entry<Integer, OfferedTaskData> e : plugin.getOfferedTasks().entrySet())
 		{
