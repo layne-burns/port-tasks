@@ -36,8 +36,6 @@ import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.DepositGuard;
 import com.nucleon.porttasks.routing.DockGuard;
-import com.nucleon.porttasks.routing.LegLearner;
-import com.nucleon.porttasks.routing.LegTracker;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
 import com.nucleon.porttasks.routing.RoutingService;
@@ -99,7 +97,6 @@ import net.runelite.api.events.WorldViewUnloaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ObjectID;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -170,19 +167,6 @@ public class PortTasksPlugin extends Plugin
 	private XpLearner xpLearner;
 	RoutingService routingService;
 	BagCounter bagCounter;
-	// Routing extension: the leg being sailed and what was learned from past legs.
-	final LegTracker legTracker = new LegTracker();
-	private LegLearner legLearner;
-	/** The boat's move mode as last seen; a leg starts when it leaves "docked". */
-	private int lastMoveMode = -1;
-	/**
-	 * Ticks after logging in or hopping during which boat-state changes are ignored: the game re-sends the
-	 * boat's varbits then, which can look like leaving or reaching a dock.
-	 */
-	private int settleTicks;
-	private static final int SETTLE_TICKS = 3;
-	/** How near its dock the boat must be for leaving it to start a leg. */
-	private static final int DEPART_RADIUS = 40;
 	private DepositGuard depositGuard;
 	private DockGuard dockGuard;
 	/** A short-lived warning to show above the player (e.g. a blocked dock), and the tick it expires. */
@@ -288,7 +272,6 @@ public class PortTasksPlugin extends Plugin
 	private static final String PLUGIN_NAME = "Port Tasks";
 	private static final String ICON_FILE = "icon.png";
 	public static final String CONFIG_GROUP = "porttasks";
-	private static final String CONFIG_KEY_LEGS = "routingLearnedLegs";
 	private static final String CONFIG_KEY_TASK_COLOURS = "taskColours";
 	/** Settings (outside the routing ones) that change how the board is marked or its tooltip. */
 	private static final Set<String> BOARD_KEYS = Set.of("noticeBoardHideOpacity", "noticeBoardHideIncompletable",
@@ -425,29 +408,17 @@ public class PortTasksPlugin extends Plugin
 		CourierWikiData courierWikiData = CourierWikiData.load(gson);
 		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
 		loadTaskColours();
-		legLearner = new LegLearner(configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_LEGS), gson, json ->
-		{
-			if (json == null)
-			{
-				configManager.unsetConfiguration(CONFIG_GROUP, CONFIG_KEY_LEGS);
-			}
-			else
-			{
-				configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_LEGS, json);
-			}
-		});
 		bagCounter = new BagCounter(courierWikiData);
 		depositGuard = new DepositGuard(client);
 		dockGuard = new DockGuard(client);
 		wantedItems.parse(config.routingWantedItems());
 		RewardValuer rewardValuer = new RewardValuer(courierWikiData, itemManager, wantedItems);
 		boardScorer = new BoardScorer(routingService.graph(), courierWikiData, xpLearner, rewardValuer, wantedItems, config);
-		applyLearnedLegs();
+		updateBestXpPerTile();
 		clientThread.invoke(() ->
 		{
 			if (client.getGameState() == GameState.LOGGED_IN)
 			{
-				lastMoveMode = client.getVarbitValue(VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE);
 				// Otherwise only set by the next Sailing XP drop: until then "Hide incompletable" hid every task.
 				sailingLevel = client.getRealSkillLevel(Skill.SAILING);
 			}
@@ -526,8 +497,7 @@ public class PortTasksPlugin extends Plugin
 	{
 		if (!event.getGroup().equals(PortTasksConfig.CONFIG_GROUP))
 			return;
-		// Learned legs are data the plugin writes itself (and has already re-planned for), not a setting.
-		if (event.getKey().startsWith("routing") && !CONFIG_KEY_LEGS.equals(event.getKey()))
+		if (event.getKey().startsWith("routing"))
 		{
 			if ("routingWantedItems".equals(event.getKey()))
 			{
@@ -539,18 +509,8 @@ public class PortTasksPlugin extends Plugin
 				boolean on = BoardScorer.bagEnabled(config, bag);
 				SwingUtilities.invokeLater(() -> pluginPanel.setBagEnabled(bag, on));
 			}
-			String key = event.getKey();
 			clientThread.invokeLater(() ->
 			{
-				if ("routingForgetLegs".equals(key) && config.routingForgetLegs())
-				{
-					legLearner.clear();
-					configManager.setConfiguration(CONFIG_GROUP, "routingForgetLegs", false);
-				}
-				if ("routingLearnLegs".equals(key) || "routingLegEstimate".equals(key) || "routingForgetLegs".equals(key))
-				{
-					applyLearnedLegs();
-				}
 				routingService.replan(courierTasks);
 				if (!offeredTasks.isEmpty())
 				{
@@ -663,7 +623,6 @@ public class PortTasksPlugin extends Plugin
 		}
 		else if (varbitId == VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE)
 		{
-			onMoveModeChanged(event.getValue());
 			rebuildView();
 		}
 		else if (RoutingDiagnostics.BOAT_VARBITS.containsKey(varbitId))
@@ -750,12 +709,6 @@ public class PortTasksPlugin extends Plugin
 		{
 			// Shortest Path may drop its path here; make the next plan re-send the leg.
 			routingService.resetShortestPath();
-			// Keep the leg under way; just don't count across the gap.
-			legTracker.pause();
-		}
-		if (state == GameState.LOGGED_IN)
-		{
-			settleTicks = SETTLE_TICKS;
 		}
 		switch (state)
 		{
@@ -813,8 +766,8 @@ public class PortTasksPlugin extends Plugin
 	}
 
 	/**
-	 * A courier task's XP per tile of its own route (pickup to delivery), with the planner's XP and distances
-	 * (learned where known). 0 if unknown.
+	 * A courier task's XP per tile of its own route (pickup to delivery), with the planner's XP (learned where
+	 * known) and the drawn-path distance. 0 if unknown.
 	 */
 	public double xpPerTile(CourierTaskData d)
 	{
@@ -824,7 +777,7 @@ public class PortTasksPlugin extends Plugin
 		return tiles > 0 && Double.isFinite(tiles) ? xpValue / tiles : 0;
 	}
 
-	/** Sailing distance of a courier task's own route, pickup to delivery (learned where known). */
+	/** Sailing distance of a courier task's own route, pickup to delivery, over the drawn paths. */
 	public double taskTiles(CourierTaskData d)
 	{
 		return routingService.graph().distance(d.getCargoLocation(), d.getDeliveryLocation());
@@ -836,7 +789,7 @@ public class PortTasksPlugin extends Plugin
 		return bestXpPerTile > 0 ? Math.min(1, xpPerTile(d) / bestXpPerTile) : 0;
 	}
 
-	/** Recomputed when a board opens and when learned legs change (about 400 tasks; cheap, but not per frame). */
+	/** Computed at start-up and when a board opens (about 400 tasks; cheap, but not per frame). */
 	private void updateBestXpPerTile()
 	{
 		double best = 0;
@@ -1064,27 +1017,6 @@ public class PortTasksPlugin extends Plugin
 	@Subscribe
 	private void onGameTick(GameTick event)
 	{
-		// Routing extension: while a leg is under way, one boat position per tick (there is no event for the
-		// boat moving), and the leg ends on the first tick the boat is docked. Nothing is done otherwise.
-		if (settleTicks > 0)
-		{
-			settleTicks--;
-		}
-		else if (legTracker.active())
-		{
-			if (!boatLocator.onBoat())
-			{
-				legTracker.cancel(); // left the boat mid-leg
-			}
-			else if (boatLocator.dockedOnBoat())
-			{
-				finishLeg();
-			}
-			else
-			{
-				legTracker.sample(boatLocator.boatWorldPoint());
-			}
-		}
 		// Whether the player is at a port on foot depends on where they stand, which has no event: one cheap check
 		// per tick while tasks are held, and the view is only rebuilt when the answer (or a timed warning) changes.
 		if (!courierTasks.isEmpty() || overheadWarning != null)
@@ -1519,57 +1451,6 @@ public class PortTasksPlugin extends Plugin
 		return boardScores.get(dbrow);
 	}
 
-	/**
-	 * Routing extension: a leg starts when the boat leaves a dock with the player on board. Not while settling
-	 * after a login or hop, not while a leg is already under way, and only beside the dock it left, so a
-	 * re-sent varbit can't start a leg mid-sea.
-	 */
-	private void onMoveModeChanged(int mode)
-	{
-		boolean wasDocked = lastMoveMode == BoatLocator.MOVE_MODE_DOCKED;
-		lastMoveMode = mode;
-		if (!wasDocked || mode == BoatLocator.MOVE_MODE_DOCKED || settleTicks > 0 || legTracker.active()
-			|| !boatLocator.onBoat() || !config.routingLearnLegs())
-		{
-			return;
-		}
-		PortLocation from = boatLocator.boatPort();
-		WorldPoint boat = boatLocator.boatWorldPoint();
-		if (from != null && boat != null && from.getNavigationLocation().distanceTo2D(boat) <= DEPART_RADIUS)
-		{
-			legTracker.start(from);
-		}
-	}
-
-	/** Routing extension: the boat docked; learn the leg if it reached another port, and re-plan with it. */
-	private void finishLeg()
-	{
-		LegTracker.Leg leg = legTracker.finish(boatLocator.boatPort());
-		if (leg == null)
-		{
-			return;
-		}
-		double estimate = routingService.graph().distance(leg.from, leg.to);
-		if (config.routingLearnLegs() && legLearner.record(leg, estimate))
-		{
-			applyLearnedLegs();
-			routingService.replan(courierTasks);
-			if (!offeredTasks.isEmpty())
-			{
-				rescoreBoard();
-			}
-			rebuildView();
-		}
-	}
-
-	/** Routing extension: plan with the learned legs, or with the drawn paths alone if learning is off. */
-	private void applyLearnedLegs()
-	{
-		routingService.graph().setLearned(config.routingLearnLegs()
-			? legLearner.estimates(config.routingLegEstimate()) : Collections.emptyList());
-		updateBestXpPerTile();
-	}
-
 	/** Routing extension: the side panel's bag-size boxes write the config through here. */
 	public void setBagEnabled(BagSize size, boolean on)
 	{
@@ -1916,6 +1797,7 @@ public class PortTasksPlugin extends Plugin
 		"drawOverlay", "pathOffset", "pathDrawDistance",
 		"enableTracer", "tracerSpeed", "tracerIntensity", "highlightTaskItems", "routingEnabled", "routingUseShortestPath",
 		"routingWestOnly", "porttaskslots", "routingLegCounter",
+		"routingLearnLegs", "routingLegEstimate", "routingForgetLegs", "routingLearnedLegs",
 	};
 
 	private void migrateConfiguration()

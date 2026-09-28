@@ -262,7 +262,7 @@ public final class BoardScorer
 		PortLocation end = config.routingEnd().port();
 		double stopCost = config.routingStopCost();
 		StringBuilder key = new StringBuilder().append(start).append('|').append(end).append('|').append(stopCost)
-			.append('|').append(slots).append('|').append(objective).append('|').append(graph.version());
+			.append('|').append(slots).append('|').append(objective);
 
 		List<RoutePlanner.TaskState> heldStates = new ArrayList<>();
 		Set<Integer> heldIds = new LinkedHashSet<>();

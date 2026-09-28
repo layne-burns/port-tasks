@@ -96,7 +96,7 @@ public class NoticeBoardTooltip extends Overlay
 			Color isAtCurLocation = data.getNoticeBoard() == data.getCargoLocation() ? Color.WHITE : Color.RED;
 			String sourceColorTag = toColTag(isAtCurLocation);
 			String endTag = "</col>";
-			// The planner's numbers: learned leg lengths and XP where known.
+			// The planner's numbers: drawn-path distances, and XP learned where known.
 			double tiles = plugin.taskTiles(data);
 			double share = plugin.xpPerTileShare(data);
 			String xpColorTag = toColTag(interpolateColor(plugin.getMinColor(), plugin.getMaxColor(), share));

@@ -4,30 +4,21 @@ import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.enums.PortPaths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
  * Travel cost between any two ports (SPEC-routing.md §3, v1). Port Tasks' hand-drawn PortPaths are the edges,
  * weighted by their length in tiles and usable in both directions; all-pairs shortest paths (Floyd–Warshall,
- * about 30 ports) give d(u, v) for every pair, including pairs with no drawn path of their own.
- *
- * Legs learned from sailing (LegLearner) refine the distances: each learned pair becomes a direct edge with
- * its measured length (replacing a drawn path between the same two ports), and the all-pairs distances are
- * recomputed, so pairs that pass through it improve too. That happens only when a leg is learned or a
- * setting changes. Thread-safe: the distance table is replaced whole.
+ * about 30 ports) give d(u, v) for every pair, including pairs with no drawn path of their own. Computed once;
+ * read-only afterwards, so safe to share between threads.
  */
 public final class RouteGraph
 {
 	private final PortLocation[] ports;
 	/** PortLocation ordinal -> index into the tables (-1 for EMPTY). */
 	private final int[] indexByOrdinal = new int[PortLocation.values().length];
-	/** drawn[i][j]: length of the shortest drawn path directly between i and j, or +infinity if none. */
-	private final double[][] drawn;
-	/** All-pairs distances over the drawn paths, refined by learned legs. */
-	private volatile double[][] cost;
-	/** Goes up each time the distances change (learned legs applied). */
-	private volatile int version;
+	/** All-pairs distances over the drawn paths. */
+	private final double[][] cost;
 
 	public RouteGraph()
 	{
@@ -46,12 +37,12 @@ public final class RouteGraph
 			indexByOrdinal[ports[i].ordinal()] = i;
 		}
 		int n = ports.length;
-		drawn = new double[n][n];
+		double[][] d = new double[n][n];
 		for (int i = 0; i < n; i++)
 		{
 			for (int j = 0; j < n; j++)
 			{
-				drawn[i][j] = i == j ? 0 : Double.POSITIVE_INFINITY;
+				d[i][j] = i == j ? 0 : Double.POSITIVE_INFINITY;
 			}
 		}
 		for (PortPaths p : PortPaths.values())
@@ -62,31 +53,10 @@ public final class RouteGraph
 			}
 			int a = index(p.getStart());
 			int b = index(p.getEnd());
-			if (a != b && p.getDistance() < drawn[a][b])
+			if (a != b && p.getDistance() < d[a][b])
 			{
-				drawn[a][b] = drawn[b][a] = p.getDistance();
+				d[a][b] = d[b][a] = p.getDistance();
 			}
-		}
-		setLearned(Collections.emptyList());
-	}
-
-	/**
-	 * Plans with these learned legs from now on (an empty list goes back to the drawn paths alone): each is a
-	 * direct edge of its measured length, replacing a drawn path between the same ports.
-	 */
-	public void setLearned(List<LegLearner.Learned> learned)
-	{
-		int n = ports.length;
-		double[][] d = new double[n][];
-		for (int i = 0; i < n; i++)
-		{
-			d[i] = drawn[i].clone();
-		}
-		for (LegLearner.Learned l : learned)
-		{
-			int a = index(l.a);
-			int b = index(l.b);
-			d[a][b] = d[b][a] = l.tiles;
 		}
 		// Floyd–Warshall: allow each port k in turn as a stop-over.
 		for (int k = 0; k < n; k++)
@@ -104,13 +74,6 @@ public final class RouteGraph
 			}
 		}
 		cost = d;
-		version++;
-	}
-
-	/** Changes whenever the distances do; lets a caller tell whether a cached result is still valid. */
-	public int version()
-	{
-		return version;
 	}
 
 	/** Sailing distance in tiles for planning, or +infinity if nothing connects them. */
