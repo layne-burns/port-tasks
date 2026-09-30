@@ -36,6 +36,8 @@ import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.DepositGuard;
 import com.nucleon.porttasks.routing.DockGuard;
+import com.nucleon.porttasks.routing.LoopPorts;
+import com.nucleon.porttasks.routing.LoopSuggester;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
 import com.nucleon.porttasks.routing.RoutingService;
@@ -78,6 +80,8 @@ import net.runelite.api.Menu;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.NPC;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameObjectDespawned;
@@ -118,6 +122,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ColorUtil;
 import com.nucleon.porttasks.routing.SubsetChooser;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import java.util.concurrent.Executors;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
@@ -502,6 +507,11 @@ public class PortTasksPlugin extends Plugin
 			if ("routingWantedItems".equals(event.getKey()))
 			{
 				wantedItems.parse(config.routingWantedItems());
+			}
+			if ("routingLoop".equals(event.getKey()))
+			{
+				String loop = config.routingLoop();
+				SwingUtilities.invokeLater(() -> pluginPanel.showLoop(loop));
 			}
 			BagSize bag = BagSize.forFilterKey(event.getKey());
 			if (bag != null)
@@ -1397,7 +1407,7 @@ public class PortTasksPlugin extends Plugin
 		{
 			CourierTaskData d = CourierTaskData.getByDbrow(s.dbrow);
 			rows.add(new PortTasksPluginPanel.BoardRow(s.rank, d.getCargoLocation(), d.getDeliveryLocation(), s.name,
-				rankValue(s, by), String.join(", ", s.wantedDrops), s.detourColor, inBestSet(s.dbrow)));
+				rankValue(s, by), String.join(", ", s.wantedDrops), s.detourColor, inBestSet(s.dbrow), s.offLoop));
 		}
 		String summary = bestSetSummary();
 		PortLocation board = lastBoard;
@@ -1449,6 +1459,50 @@ public class PortTasksPlugin extends Plugin
 	public BoardScorer.Score boardScore(int dbrow)
 	{
 		return boardScores.get(dbrow);
+	}
+
+	/**
+	 * Routing extension (SPEC-routing.md §2.4.1): works out the best loops for the player's level, reachable
+	 * ports and allowed bag sizes, and hands them to {@code done} on the Swing thread. The pool is gathered on
+	 * the client thread (level, quest state, learned XP); the search runs on the best-set thread. Only on
+	 * request from the side panel.
+	 */
+	public void suggestLoops(Consumer<List<LoopSuggester.Suggestion>> done)
+	{
+		clientThread.invokeLater(() ->
+		{
+			int level = sailingLevel;
+			Set<PortLocation> usable = LoopSuggester.allPorts();
+			usable.removeAll(LoopPorts.parse(config.routingLoopExclude()).ports());
+			usable.removeIf(p -> level > 0 && p.getSailingLevelRequired() != null && p.getSailingLevelRequired() > level);
+			if (Quest.SONG_OF_THE_ELVES.getState(client) != QuestState.FINISHED)
+			{
+				usable.remove(PortLocation.PRIFDDINAS);
+			}
+			List<LoopSuggester.Candidate> pool = new ArrayList<>();
+			for (CourierTaskData d : CourierTaskData.all())
+			{
+				Integer xp = xpLearner.xp(d.getId());
+				if (xp == null || level > 0 && d.getLevelRequired() > level || !BoardScorer.bagEnabled(config, BagSize.forXp(xp)))
+				{
+					continue;
+				}
+				pool.add(new LoopSuggester.Candidate(d.getNoticeBoard(), d.getCargoLocation(), d.getDeliveryLocation(), xp));
+			}
+			log.debug("[routing] loop suggestions: {} pool tasks, {} usable ports, level {}", pool.size(), usable.size(), level);
+			setSearchExecutor.execute(() ->
+			{
+				List<LoopSuggester.Suggestion> best = new LoopSuggester(routingService.graph()::distance).suggest(pool, usable, 6);
+				SwingUtilities.invokeLater(() -> done.accept(best));
+			});
+		});
+	}
+
+	/** Routing extension: sets the loop (the side panel's suggestions write it through here). */
+	public void setLoop(List<PortLocation> ports)
+	{
+		configManager.setConfiguration(CONFIG_GROUP, "routingLoop",
+			ports.stream().map(PortLocation::getName).collect(Collectors.joining(", ")));
 	}
 
 	/** Routing extension: the side panel's bag-size boxes write the config through here. */

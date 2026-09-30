@@ -79,6 +79,33 @@ public interface PortTasksConfig extends Config
 		return RouteEnd.ANYWHERE;
 	}
 
+	@ConfigItem(
+		keyName = "routingLoop",
+		name = "Loop ports",
+		description = "The ports you sail between, separated by commas (e.g. Deepfin, Lunar, Port Roberts, Red Rock)."
+			+ " Board tasks that stay inside the loop rank first and the best set only takes them; others are still"
+			+ " shown, marked off loop. Leave empty for no loop. The side panel suggests loops",
+		section = planningSection,
+		position = 3
+	)
+	default String routingLoop()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "routingLoopExclude",
+		name = "Not in loop suggestions",
+		description = "Ports the loop suggestions should leave out, separated by commas (e.g. ones you can't reach yet)."
+			+ " Ports above your Sailing level, and Prifddinas before Song of the Elves, are left out anyway",
+		section = planningSection,
+		position = 4
+	)
+	default String routingLoopExclude()
+	{
+		return "";
+	}
+
 	// ---------------------------------------------------------------- Notice board
 
 	@ConfigSection(

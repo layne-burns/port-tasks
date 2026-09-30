@@ -86,6 +86,26 @@ The last one guards against a high marginal ratio on a tiny pick that lowers the
   - A given value replaces the item's alch value in the value metrics. This replaces the separate crystal-shard and spirit-flake settings.
 - Leg drawing (phase 3, changed 2026-09-25): the Shortest Path plugin now paths at sea, so by default the next leg is drawn by it. We send the next stop's dock as its target over its PluginMessage API, and only when the next stop changes. **Changed 2026-09-27:** Shortest Path is the only leg drawing; our own drawn-path rendering, Port Tasks' per-task lines and their tracer were removed, and routing is always on.
 
+### 2.4 The loop (added 2026-09-29)
+
+A **loop** is a small set of ports `L` the player sails between for a whole session, chosen so that the notice boards there offer mostly large bags for tasks inside `L`. It is a setting (**Loop ports**, a list of names), separate from the bag-size filter: the filter decides *which rewards* count, the loop decides *where to sail*. They meet only in the loop suggestions (§2.4.1), which count allowed bag sizes only.
+
+- A task is **in the loop** if its pickup and delivery ports are both in `L` (it is taken at a loop board anyway).
+- **Board ranking:** in-loop tasks rank first, then the rest, each group by the ranking metric. Off-loop tasks are still shown and scored: dimmed under an "Off loop" divider in the side list, and badged "off loop" in grey on the board. Rationale: the §2.2 margins don't see the cost of getting back into the loop afterwards (the plan's end isn't valued), so the loop stands in for that.
+- **Best set:** chosen from in-loop tasks only.
+
+#### 2.4.1 Loop suggestions
+
+Boards show a random draw from a fixed pool per port (the wiki's *Courier tasks* table gives each task one board), so a loop is judged by its pools. On request ("Suggest loops" in the side panel), every set `L` of 2–4 usable ports is scored:
+
+- **pool tasks in `L`:** tasks whose board, pickup and delivery are all in `L`, that the player can take (level) and wants (bag-size filter), with known XP;
+- **loop tiles** `c(L)`: the shortest cycle through `L` in the port graph (for 2 ports, twice the distance; for 4, the best of the 3 distinct tours);
+- **density** `D(L) = Σ XP of the pool tasks in L / c(L)`, shown per 1,000 tiles.
+
+Loops need at least **3 pool tasks per port** to qualify (without that floor, two close ports sharing a couple of tasks come out on top), and rank by `D`. Usable ports: all, minus ports above the player's level, minus Prifddinas before Song of the Elves, minus the **Not in loop suggestions** list. Clicking a suggestion sets the loop. The search is ~28k port sets × a few hundred tasks as bit masks, a few milliseconds, off the client thread.
+
+A density is not a rate: a board shows only part of its pool at a time, so the real XP per tile depends on the draw. It ranks loops by how much worthwhile work sits inside them per tile of sailing round them.
+
 ## 3. Travel cost `d(u, v)`
 
 No available plugin does sea pathfinding. As of 2026-09-24, Shortest Path says in its code that it doesn't model sailing navigation. Duckblade's Sailing plugin draws hazard overlays but doesn't plan routes. Plan:

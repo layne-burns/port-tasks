@@ -68,7 +68,11 @@ public final class BoardScorer
 		public final double planRateAfter;
 		public final List<String> signatureDrops;
 		public final List<String> wantedDrops;
-		/** 1 = best under the ranking metric. */
+		/** A loop is set and this task's pickup and delivery are both in it. */
+		public boolean inLoop;
+		/** A loop is set and this task leaves it. */
+		public boolean offLoop;
+		/** 1 = best under the ranking metric (in-loop tasks first when a loop is set). */
 		public int rank;
 
 		Score(int dbrow, String name, PortLocation destination, Integer xp, BagSize bag, double expectedValue,
@@ -186,7 +190,22 @@ public final class BoardScorer
 				signature, wantedHere, graph.distance(d.getCargoLocation(), d.getDeliveryLocation())));
 		}
 
-		scores.sort(comparator(config.routingRankBy()));
+		// With a loop set, tasks that stay inside it rank first and the ones that leave it after, each group in
+		// metric order: the loop is a standing choice of where to sail, so a task leaving it is worth less than
+		// its own numbers say (the plan doesn't see what it costs to get back).
+		LoopPorts loop = loop();
+		Comparator<Score> order = comparator(config.routingRankBy());
+		if (loop.active())
+		{
+			for (Score s : scores)
+			{
+				CourierTaskData d = CourierTaskData.getByDbrow(s.dbrow);
+				s.inLoop = d != null && loop.holds(d.getCargoLocation(), d.getDeliveryLocation());
+				s.offLoop = !s.inLoop;
+			}
+			order = Comparator.comparing((Score s) -> s.offLoop).thenComparing(order);
+		}
+		scores.sort(order);
 		for (int i = 0; i < scores.size(); i++)
 		{
 			scores.get(i).rank = i + 1;
@@ -281,12 +300,16 @@ public final class BoardScorer
 			heldReward += r == null ? 0 : r;
 			key.append("|h").append(d.getId()).append(needsPickup ? 'p' : 'd');
 		}
+		// With a loop set, the best set is chosen from the tasks that stay inside it.
+		LoopPorts loop = loop();
+		key.append("|loop").append(loop);
 		List<SubsetChooser.Candidate> candidates = new ArrayList<>();
 		for (CourierTaskData d : offered)
 		{
 			Double r = reward(d, objective);
 			if (heldIds.contains(d.getId()) || !passesBagFilter(d) || r == null
-				|| sailingLevel > 0 && d.getLevelRequired() > sailingLevel)
+				|| sailingLevel > 0 && d.getLevelRequired() > sailingLevel
+				|| loop.active() && !loop.holds(d.getCargoLocation(), d.getDeliveryLocation()))
 			{
 				continue;
 			}
@@ -295,6 +318,12 @@ public final class BoardScorer
 			key.append("|c").append(d.getDbrow()).append('=').append(Math.round(r));
 		}
 		return new SetSearch(graph, start, heldStates, heldReward, candidates, slots, end, stopCost, key.toString());
+	}
+
+	/** The loop from the config (parsed each board scoring, which is rare and the list is a few names). */
+	public LoopPorts loop()
+	{
+		return LoopPorts.parse(config.routingLoop());
 	}
 
 	/** A task's reward for the objective (XP, or expected bag value), or null if its XP isn't known. */

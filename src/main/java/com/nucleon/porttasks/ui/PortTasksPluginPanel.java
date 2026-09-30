@@ -39,6 +39,8 @@ import com.nucleon.porttasks.Task;
 import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
+import com.nucleon.porttasks.routing.LoopPorts;
+import com.nucleon.porttasks.routing.LoopSuggester;
 import com.nucleon.porttasks.ui.adapters.ReloadPortTasks;
 
 import net.runelite.api.Client;
@@ -59,6 +61,8 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -82,6 +86,11 @@ public class PortTasksPluginPanel extends PluginPanel
 		private final JPanel boardView = new JPanel();
 		// Routing extension: one box per bag size, mirroring the bag-filter config toggles.
 		private final Map<BagSize, JCheckBox> bagBoxes = new EnumMap<>(BagSize.class);
+		// Routing extension: the loop, and loop suggestions shown on request.
+		private final JPanel loopView = new JPanel();
+		private final FitLabel loopLabel = new FitLabel();
+		private final JLabel suggestLink = new JLabel("Suggest loops");
+		private final JPanel suggestionsView = new JPanel();
 		// Routing extension: which task rows are open ("c"/"b" + task dbrow), kept across rebuilds.
 		private final Set<String> openRows = new HashSet<>();
 		private final Map<Integer, BountyRow> bountyRows = new HashMap<>();
@@ -142,7 +151,36 @@ public class PortTasksPluginPanel extends PluginPanel
 				bagBoxes.put(size, box);
 				bagRow.add(box);
 			}
-			northPanel.add(bagRow, BorderLayout.SOUTH);
+			// Loop: the current loop, and suggestions on request (SPEC-routing.md §2.4).
+			loopView.setLayout(new BoxLayout(loopView, BoxLayout.Y_AXIS));
+			loopView.setBorder(new EmptyBorder(4, 0, 0, 0));
+			loopLabel.setFont(FontManager.getRunescapeSmallFont());
+			loopLabel.setForeground(Color.WHITE);
+			loopLabel.setAlignmentX(LEFT_ALIGNMENT);
+			suggestLink.setFont(FontManager.getRunescapeSmallFont());
+			suggestLink.setForeground(config.routingLegColor());
+			suggestLink.setAlignmentX(LEFT_ALIGNMENT);
+			suggestLink.setToolTipText("Rank loops for your level, the ports you can reach and the bag sizes ticked above");
+			suggestLink.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mouseClicked(MouseEvent e)
+				{
+					suggestLink.setText("Finding loops...");
+					plugin.suggestLoops(PortTasksPluginPanel.this::showSuggestions);
+				}
+			});
+			suggestionsView.setLayout(new BoxLayout(suggestionsView, BoxLayout.Y_AXIS));
+			suggestionsView.setAlignmentX(LEFT_ALIGNMENT);
+			loopView.add(loopLabel);
+			loopView.add(suggestLink);
+			loopView.add(suggestionsView);
+			showLoop(config.routingLoop());
+
+			JPanel south = new JPanel(new BorderLayout());
+			south.add(bagRow, BorderLayout.NORTH);
+			south.add(loopView, BorderLayout.CENTER);
+			northPanel.add(south, BorderLayout.SOUTH);
 
 			// marker view panels, these are dynamically added in rebuild()
 			JPanel centerPanel = new JPanel(new BorderLayout());
@@ -217,10 +255,13 @@ public class PortTasksPluginPanel extends PluginPanel
 			final Color detour;
 			/** Part of the best set of tasks to take. */
 			final boolean chosen;
+			/** A loop is set and this task leaves it: listed after the in-loop tasks, dimmed. */
+			final boolean offLoop;
 
 			public BoardRow(int rank, PortLocation pickup, PortLocation delivery, String name, String metric, String wanted, Color detour,
-				boolean chosen)
+				boolean chosen, boolean offLoop)
 			{
+				this.offLoop = offLoop;
 				this.rank = rank;
 				this.pickup = pickup;
 				this.delivery = delivery;
@@ -260,8 +301,19 @@ public class PortTasksPluginPanel extends PluginPanel
 					boardView.add(line);
 				}
 				boolean sets = summary != null;
+				boolean offLoopShown = false;
 				for (BoardRow r : rows)
 				{
+					if (r.offLoop && !offLoopShown)
+					{
+						// Rows come in-loop first, so one divider separates the two groups.
+						offLoopShown = true;
+						JLabel divider = new JLabel("Off loop");
+						divider.setFont(FontManager.getRunescapeSmallFont());
+						divider.setForeground(Color.GRAY);
+						divider.setBorder(new EmptyBorder(4, 0, 1, 0));
+						boardView.add(divider);
+					}
 					boardView.add(boardLine(r, config.routingLegColor(), sets));
 				}
 			}
@@ -274,13 +326,14 @@ public class PortTasksPluginPanel extends PluginPanel
 		{
 			JPanel line = new JPanel(new BorderLayout(4, 0));
 			line.setBorder(new EmptyBorder(1, 0, 1, 0));
-			line.setToolTipText("<html>" + r.name + (r.wanted.isEmpty() ? "" : "<br>Wanted: " + r.wanted) + "</html>");
+			line.setToolTipText("<html>" + r.name + (r.wanted.isEmpty() ? "" : "<br>Wanted: " + r.wanted)
+				+ (r.offLoop ? "<br>Leaves the loop" : "") + "</html>");
 
 			JLabel rank = new JLabel("#" + r.rank);
 			rank.setForeground(sets ? (r.chosen ? best : Color.GRAY) : (r.rank == 1 ? best : Color.GRAY));
 			FitLabel route = new FitLabel();
 			route.setVersions(PortNames.route(r.wanted.isEmpty() ? "" : "\u2605 ", r.pickup, r.delivery));
-			route.setForeground(r.detour);
+			route.setForeground(r.offLoop ? r.detour.darker().darker() : r.detour);
 			JLabel metric = new JLabel(r.metric);
 			metric.setForeground(Color.GRAY);
 			for (JLabel l : new JLabel[]{rank, route, metric})
@@ -291,6 +344,85 @@ public class PortTasksPluginPanel extends PluginPanel
 			line.add(route, BorderLayout.CENTER);
 			line.add(metric, BorderLayout.EAST);
 			return line;
+		}
+
+		/** Routing extension: shows the loop setting's ports (or that none is set, or names it didn't know). Swing thread only. */
+		public void showLoop(String setting)
+		{
+			LoopPorts loop = LoopPorts.parse(setting);
+			if (!loop.active())
+			{
+				loopLabel.setVersions("Loop: none");
+			}
+			else
+			{
+				List<String> full = new ArrayList<>();
+				List<String> abbr = new ArrayList<>();
+				for (PortLocation p : loop.ports())
+				{
+					full.add(PortNames.full(p));
+					abbr.add(PortNames.abbreviation(p));
+				}
+				loopLabel.setVersions("Loop: " + String.join(", ", full), "Loop: " + String.join(", ", abbr),
+					"Loop: " + loop.ports().size() + " ports");
+			}
+			loopLabel.setToolTipText(loop.unknown().isEmpty() ? null
+				: "<html>Not a port (or more than one): " + String.join(", ", loop.unknown()) + "</html>");
+			loopLabel.setForeground(loop.unknown().isEmpty() ? Color.WHITE : Color.ORANGE);
+		}
+
+		/**
+		 * Routing extension: one line per suggested loop: its ports in sailing order, then pool tasks inside it
+		 * and pool XP per 1,000 loop tiles. Clicking a line makes it the loop. Swing thread only.
+		 */
+		void showSuggestions(List<LoopSuggester.Suggestion> suggestions)
+		{
+			suggestLink.setText("Suggest loops");
+			suggestionsView.removeAll();
+			if (suggestions.isEmpty())
+			{
+				JLabel none = new JLabel("No loop has " + LoopSuggester.TASKS_PER_PORT + "+ tasks per port");
+				none.setFont(FontManager.getRunescapeSmallFont());
+				none.setForeground(Color.GRAY);
+				suggestionsView.add(none);
+			}
+			for (LoopSuggester.Suggestion s : suggestions)
+			{
+				JPanel line = new JPanel(new BorderLayout(4, 0));
+				line.setAlignmentX(LEFT_ALIGNMENT);
+				line.setBorder(new EmptyBorder(1, 0, 1, 0));
+				FitLabel ports = new FitLabel();
+				List<String> full = new ArrayList<>();
+				List<String> abbr = new ArrayList<>();
+				for (PortLocation p : s.ports)
+				{
+					full.add(PortNames.full(p));
+					abbr.add(PortNames.abbreviation(p));
+				}
+				ports.setVersions(String.join(", ", full), String.join(", ", abbr));
+				JLabel numbers = new JLabel(s.tasks + " · " + String.format("%.1fk", s.density() / 1000));
+				numbers.setForeground(Color.GRAY);
+				for (JLabel l : new JLabel[]{ports, numbers})
+				{
+					l.setFont(FontManager.getRunescapeSmallFont());
+				}
+				line.setToolTipText(String.format("<html>%s<br>%d tasks in the pool stay inside it<br>%,.0f pool XP per 1,000 tiles"
+						+ "<br>Loop: %,.0f tiles<br>Click to use this loop</html>",
+					String.join(" > ", full), s.tasks, s.density(), s.loopTiles));
+				line.addMouseListener(new MouseAdapter()
+				{
+					@Override
+					public void mouseClicked(MouseEvent e)
+					{
+						plugin.setLoop(s.ports);
+					}
+				});
+				line.add(ports, BorderLayout.CENTER);
+				line.add(numbers, BorderLayout.EAST);
+				suggestionsView.add(line);
+			}
+			suggestionsView.revalidate();
+			suggestionsView.repaint();
 		}
 
 		/** Routing extension: keeps a bag-size box in step when its toggle is changed in the config. Swing thread only. */

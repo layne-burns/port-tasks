@@ -97,8 +97,9 @@ class RoutingBoardOverlay extends Overlay
 			{
 				outline(graphics, r, config.routingWantedColor(), picked ? 3 : 0);
 			}
-			OverlayUtil.renderTextLocation(graphics, new Point(r.x + 3, r.y + 12), "#" + s.rank,
-				picked ? config.routingLegColor() : Color.WHITE);
+			// With a loop set, tasks that leave it are ranked after the rest and badged in grey.
+			OverlayUtil.renderTextLocation(graphics, new Point(r.x + 3, r.y + 12), "#" + s.rank + (s.offLoop ? " off loop" : ""),
+				picked ? config.routingLegColor() : s.offLoop ? Color.GRAY : Color.WHITE);
 		}
 		return null;
 	}
