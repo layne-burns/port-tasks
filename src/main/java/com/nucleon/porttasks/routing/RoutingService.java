@@ -73,6 +73,12 @@ public final class RoutingService
 	 */
 	private WorldPoint landTarget;
 	/**
+	 * The bounty hunt's sea target (a monster's spawn area or safespot) and where the boat was when it was
+	 * chosen: sailed to with the sailing settings, and while set it wins over the courier leg. Null for none.
+	 */
+	private WorldPoint seaTarget;
+	private WorldPoint seaStart;
+	/**
 	 * What Shortest Path was last told ("clear", a sailing leg or a land target), or null to resend. Starts as
 	 * "clear" so a path the player set themselves isn't cleared before we have one of our own.
 	 */
@@ -219,6 +225,17 @@ public final class RoutingService
 		}
 	}
 
+	/** Bounty hunt at sea: a point to sail to from {@code start} (the boat), or null to go back to the courier leg. */
+	public void setSeaTarget(WorldPoint start, WorldPoint target)
+	{
+		if (target == null || !target.equals(seaTarget))
+		{
+			seaStart = start;
+		}
+		seaTarget = target;
+		publish();
+	}
+
 	/** Loop mode: a notice board to walk or teleport to, or null to go back to the sailing leg. */
 	public void setLandTarget(WorldPoint target)
 	{
@@ -247,6 +264,7 @@ public final class RoutingService
 	private void publish()
 	{
 		String want = landTarget != null ? "land " + landTarget
+			: seaTarget != null ? "sea " + seaTarget
 			: shortestPathTarget != null ? "sail " + shortestPathStart + " > " + shortestPathTarget : "clear";
 		if (want.equals(sent))
 		{
@@ -257,6 +275,18 @@ public final class RoutingService
 			eventBus.post(new PluginMessage(SHORTEST_PATH, "clear"));
 			Map<String, Object> data = new HashMap<>();
 			data.put("target", landTarget);
+			eventBus.post(new PluginMessage(SHORTEST_PATH, "path", data));
+		}
+		else if (seaTarget != null)
+		{
+			// Sailed like a courier leg: sea only, from where the boat was (the player is in the boat's coordinates).
+			Map<String, Object> data = new HashMap<>();
+			if (seaStart != null)
+			{
+				data.put("start", seaStart);
+			}
+			data.put("target", seaTarget);
+			data.put("config", SHORTEST_PATH_SAILING);
 			eventBus.post(new PluginMessage(SHORTEST_PATH, "path", data));
 		}
 		else if (shortestPathTarget != null)

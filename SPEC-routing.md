@@ -132,6 +132,20 @@ For monsters the player picks (**Bounty hunt** setting, or the side panel's "Cho
 - **Value:** each line shows quantity, bag size and the expected bag value at high-alchemy prices: 4/5 coin bag, 1/5 reward bag (assumed the same split as couriers), counting only the drops all ports' bags share, because a bounty is claimed at any port master and the wiki doesn't say whose port-themed items its reward bag holds.
 - **On the board:** hunted bounties (not held) are outlined in the wanted-item colour and labelled "Hunt".
 
+#### 2.5.1 Sailing to the monsters (added 2026-09-30)
+
+- **Data:** `scripts/update_bounty_spawns.py` writes `bounty_spawns.json` from each bounty monster's wiki page: its *Locations* table, one area per LocLine (a named sea area and its spawn tiles; two spellings of coordinates on the wiki). All 20 monsters have areas. Each area's target is the spawn tile nearest its centre: a real spawn, so a sea tile Shortest Path can reach.
+- **When:** at sea (on the boat, not docked), setting **Sail to bounty monsters** on, and a held bounty still missing parts.
+- **Which area:** the one estimated quickest to sail to, over the monsters of all incomplete held bounties. There is no sea pathfinder, so the estimate goes through the port graph: `est(A) = |boat − p₀| + min_p ( d(p₀, p) + |p − A| )`, where `p₀` is the port nearest the boat, `d` the port-graph distance and `|x − A|` the straight distance to A's nearest spawn. A plain straight line would cross land.
+- **Staying:** the choice is locked to that task until its parts are in (`items collected ≥ quantity`), then the next is chosen from where the boat is. With every held bounty done and no courier plan, it heads for the nearest reachable port (any port master claims).
+- **Shortest Path:** sent as a sailing leg (sea only), starting from the boat's position when the target was chosen, and it wins over the courier leg while set. It is only re-sent when the target changes.
+
+#### 2.5.2 Safespots
+
+- The wiki maps a safespot for only two bounty monsters (Great white shark, Lonely Sea; Orca, near Neitiznot), as `{{Map|mtype=rectangle}}` pins, read here as a centre and a size (**to confirm in game**: if the drawn tiles are offset, the pin is a corner). Five more pages describe one in words only (Armoured kraken, Hammerhead shark, Stingray, Veiled kraken; Albatross by picture); those sentences are kept as **notes** and shown in the side panel.
+- **Save safespot here** (side panel, while sailing for a monster) records the boat's tile as a safespot for it (profile key `routingSafespots`); **Forget saved** clears them.
+- A monster with any safespot (wiki or saved) is sailed to at its nearest safespot instead of its spawn areas. The target safespot's tiles are outlined on the sea (top-level world view; drawn only while one is the target).
+
 ## 3. Travel cost `d(u, v)`
 
 No available plugin does sea pathfinding. As of 2026-09-24, Shortest Path says in its code that it doesn't model sailing navigation. Duckblade's Sailing plugin draws hazard overlays but doesn't plan routes. Plan:

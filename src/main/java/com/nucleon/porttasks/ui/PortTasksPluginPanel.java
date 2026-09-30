@@ -40,6 +40,7 @@ import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BountyHunt;
+import com.nucleon.porttasks.routing.BountySpawns;
 import com.nucleon.porttasks.routing.LoopPorts;
 import com.nucleon.porttasks.routing.LoopStatus;
 import com.nucleon.porttasks.routing.LoopSuggester;
@@ -497,9 +498,35 @@ public class PortTasksPluginPanel extends PluginPanel
 		 * board in search order: its state (offered now, always offered, to check, not this cycle), then the
 		 * task's quantity, bag size and expected bag value at high-alchemy prices. Swing thread only.
 		 */
-		public void showBountyHunt(BountyHunt hunt)
+		public void showBountyHunt(BountyHunt hunt, BountySpawns.Area sea, List<String> notes)
 		{
 			huntResults.removeAll();
+			if (sea != null)
+			{
+				// At sea: the monster being sailed for, where, and the safespot tools (SPEC-routing.md §2.5.1-2).
+				FitLabel at = new FitLabel();
+				at.setFont(FontManager.getRunescapeSmallFont());
+				at.setForeground(config.routingLegColor());
+				at.setAlignmentX(LEFT_ALIGNMENT);
+				at.setVersions("Sailing for " + sea.monster + ": " + sea.location, "Sailing for " + sea.monster, sea.monster);
+				at.setToolTipText("<html>" + sea.monster + "<br>" + sea.location + "<br>Kept until the task's parts are in</html>");
+				huntResults.add(at);
+				if (!notes.isEmpty() && sea.safespot == null)
+				{
+					JLabel hint = new JLabel("<html><div style='width:180px'>Wiki: " + String.join(" ", notes) + "</div></html>");
+					hint.setFont(FontManager.getRunescapeSmallFont());
+					hint.setForeground(Color.GRAY);
+					hint.setAlignmentX(LEFT_ALIGNMENT);
+					huntResults.add(hint);
+				}
+				JPanel tools = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+				tools.setAlignmentX(LEFT_ALIGNMENT);
+				tools.add(link("Save safespot here", "Records the boat's tile as a " + sea.monster
+					+ " safespot; sailing for it then goes there", plugin::saveSafespot));
+				tools.add(smallLabel("  ", Color.GRAY));
+				tools.add(link("Forget saved", "Forgets your saved " + sea.monster + " safespots", plugin::clearSafespots));
+				huntResults.add(tools);
+			}
 			if (hunt.next != null)
 			{
 				huntResults.add(smallLabel("Next: " + PortNames.full(hunt.next), config.routingLegColor()));
@@ -561,6 +588,22 @@ public class PortTasksPluginPanel extends PluginPanel
 			line.add(where, BorderLayout.CENTER);
 			line.add(numbers, BorderLayout.EAST);
 			return line;
+		}
+
+		/** A clickable small-font label in the accent colour. */
+		private JLabel link(String text, String tip, Runnable action)
+		{
+			JLabel l = smallLabel(text, config.routingLegColor());
+			l.setToolTipText(tip);
+			l.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mouseClicked(MouseEvent e)
+				{
+					action.run();
+				}
+			});
+			return l;
 		}
 
 		private static JLabel smallLabel(String text, Color colour)

@@ -34,6 +34,8 @@ import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.BountyHunt;
+import com.nucleon.porttasks.routing.BountySpawns;
+import com.nucleon.porttasks.routing.SavedSafespots;
 import com.nucleon.porttasks.routing.BountyWikiData;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.DepositGuard;
@@ -184,6 +186,12 @@ public class PortTasksPlugin extends Plugin
 	private BountyWikiData bountyWiki;
 	private RewardValuer rewardValuer;
 	private volatile BountyHunt bountyHunt = BountyHunt.NONE;
+	// Routing extension: sailing to bounty monsters (SPEC-routing.md §2.5.1): spawn areas, saved safespots, and
+	// the held bounty task being hunted with the area chosen for it (kept until its parts are in).
+	private BountySpawns bountySpawns;
+	private SavedSafespots savedSafespots;
+	private int seaTaskId = -1;
+	private volatile BountySpawns.Area seaArea;
 	// Whether each port-gating quest is finished; absent until read this login.
 	private final Map<Quest, Boolean> questsDone = new HashMap<>();
 	private boolean questCheckPending;
@@ -225,6 +233,8 @@ public class PortTasksPlugin extends Plugin
 	private RoutingCargoReminderOverlay routingCargoReminderOverlay;
 	@Inject
 	private RoutingBoardOverlay routingBoardOverlay;
+	@Inject
+	private RoutingSafespotOverlay routingSafespotOverlay;
 	@Inject
 	private RoutingCargoHoldOverlay routingCargoHoldOverlay;
 	@Getter
@@ -438,6 +448,8 @@ public class PortTasksPlugin extends Plugin
 		RewardValuer rewardValuer = new RewardValuer(courierWikiData, itemManager, wantedItems);
 		this.rewardValuer = rewardValuer;
 		bountyWiki = BountyWikiData.load(gson);
+		bountySpawns = BountySpawns.load(gson);
+		savedSafespots = new SavedSafespots(configManager, CONFIG_GROUP, gson);
 		boardScorer = new BoardScorer(routingService.graph(), courierWikiData, xpLearner, rewardValuer, wantedItems, config);
 		updateBestXpPerTile();
 		clientThread.invoke(() ->
@@ -469,6 +481,7 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.add(routingNextStopOverlay);
 		overlayManager.add(routingCargoReminderOverlay);
 		overlayManager.add(routingBoardOverlay);
+		overlayManager.add(routingSafespotOverlay);
 		overlayManager.add(routingCargoHoldOverlay);
 
 		migrateConfiguration();
@@ -511,6 +524,7 @@ public class PortTasksPlugin extends Plugin
 		overlayManager.remove(routingNextStopOverlay);
 		overlayManager.remove(routingCargoReminderOverlay);
 		overlayManager.remove(routingBoardOverlay);
+		overlayManager.remove(routingSafespotOverlay);
 		overlayManager.remove(routingCargoHoldOverlay);
 		overlayManager.remove(despawnTimerOverlay);
 		setSearchExecutor.shutdownNow();
@@ -1053,10 +1067,112 @@ public class PortTasksPlugin extends Plugin
 		{
 			SwingUtilities.invokeLater(() -> pluginPanel.showLoopStatus(status));
 		}
-		if (huntChanged)
+		BountySpawns.Area before = seaArea;
+		updateSeaHunt();
+		if (huntChanged || before != seaArea)
 		{
-			SwingUtilities.invokeLater(() -> pluginPanel.showBountyHunt(hunt));
+			BountySpawns.Area area = seaArea;
+			List<String> notes = area == null ? Collections.emptyList() : bountySpawns.safespotNotes(area.monster);
+			SwingUtilities.invokeLater(() -> pluginPanel.showBountyHunt(hunt, area, notes));
 		}
+	}
+
+	/**
+	 * Routing extension (SPEC-routing.md §2.5.1): at sea with a bounty task still missing parts, sail to the
+	 * nearest place one of those monsters spawns (a safespot if known) and stay on it until that task's parts
+	 * are in; then the next. With every held bounty done and no courier route, head for the nearest port to
+	 * claim. Called from rebuildView (task progress, boat movement and docking are among its events).
+	 */
+	private void updateSeaHunt()
+	{
+		boolean atSea = boatLocator.onBoat() && !boatLocator.dockedOnBoat();
+		WorldPoint boat = boatLocator.boatWorldPoint();
+		if (!config.routingBountySail() || !atSea || boat == null)
+		{
+			routingService.setSeaTarget(null, null);
+			return;
+		}
+		Map<Integer, BountyTask> open = new HashMap<>();
+		for (BountyTask t : bountyTasks)
+		{
+			if (t.getItemsCollected() < t.getData().itemQuantity)
+			{
+				open.put(t.getData().getId(), t);
+			}
+		}
+		if (!open.containsKey(seaTaskId))
+		{
+			seaTaskId = -1;
+			seaArea = null;
+		}
+		Set<PortLocation> ports = LoopSuggester.allPorts();
+		ports.removeAll(unreachablePorts());
+		if (open.isEmpty())
+		{
+			// Every held bounty's parts are in: claim at the nearest port master, unless a courier route stops soon anyway.
+			PortLocation claim = !bountyTasks.isEmpty() && routingService.plan() == null ? BountySpawns.nearestPort(boat, ports) : null;
+			routingService.setSeaTarget(boat, claim == null ? null : claim.getNavigationLocation());
+			return;
+		}
+		if (seaArea == null)
+		{
+			// Choose among the monsters still wanted (or, if one is being hunted, only its monster).
+			Map<String, Integer> byMonster = new HashMap<>();
+			for (BountyTask t : open.values())
+			{
+				BountyWikiData.Task w = bountyWiki.task(t.getData().getId());
+				if (w != null && (seaTaskId < 0 || w.taskId == seaTaskId))
+				{
+					byMonster.putIfAbsent(w.monster, w.taskId);
+				}
+			}
+			seaArea = bountySpawns.nearest(byMonster.keySet(), savedSafespots.areas(), boat, ports, routingService.graph()::distance);
+			seaTaskId = seaArea == null ? -1 : byMonster.get(seaArea.monster);
+			log.debug("[bounty] sailing for {} at {} ({})", seaArea == null ? null : seaArea.monster,
+				seaArea == null ? null : seaArea.location, seaArea == null ? null : seaArea.target);
+		}
+		routingService.setSeaTarget(boat, seaArea == null ? null : seaArea.target);
+	}
+
+	/** Routing extension: the bounty spawn area or safespot being sailed to, or null (read by the safespot overlay). */
+	public BountySpawns.Area seaArea()
+	{
+		return seaArea;
+	}
+
+	/** Routing extension: saves the boat's tile as a safespot for the monster being hunted ("Save safespot here"). */
+	public void saveSafespot()
+	{
+		clientThread.invokeLater(() ->
+		{
+			BountySpawns.Area area = seaArea;
+			WorldPoint boat = boatLocator.boatWorldPoint();
+			if (area == null || boat == null)
+			{
+				sendMessage("Save a safespot at sea, while sailing for a bounty monster.");
+				return;
+			}
+			savedSafespots.add(area.monster, boat);
+			sendMessage("Saved a " + area.monster + " safespot at " + boat.getX() + ", " + boat.getY() + ".");
+			seaArea = null; // re-choose, now with the safespot
+			rebuildView();
+		});
+	}
+
+	/** Routing extension: forgets the saved safespots of the monster being hunted. */
+	public void clearSafespots()
+	{
+		clientThread.invokeLater(() ->
+		{
+			BountySpawns.Area area = seaArea;
+			if (area != null)
+			{
+				savedSafespots.clear(area.monster);
+				sendMessage("Forgot the saved " + area.monster + " safespots.");
+				seaArea = null;
+				rebuildView();
+			}
+		});
 	}
 
 	/**

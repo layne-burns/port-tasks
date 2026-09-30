@@ -704,6 +704,20 @@ public interface PortTasksConfig extends Config
 		return "";
 	}
 
+	@ConfigItem(
+		keyName = "routingBountySail",
+		name = "Sail to bounty monsters",
+		description = "At sea with a bounty task still missing parts, point Shortest Path at the nearest place its monster"
+			+ " spawns (a safespot if one is known) and keep it there until the parts are in, then the next monster;"
+			+ " with all parts in and no courier route, the nearest port to claim. Takes over from the courier leg meanwhile",
+		section = bountyTasks,
+		position = 4
+	)
+	default boolean routingBountySail()
+	{
+		return true;
+	}
+
 	// ---------------------------------------------------------------- Board reset tracker
 
 	@ConfigSection(
