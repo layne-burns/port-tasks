@@ -775,6 +775,47 @@ public interface PortTasksConfig extends Config
 		return 20;
 	}
 
+	@Range(min = 30, max = 600)
+	@Units(Units.SECONDS)
+	@ConfigItem(
+		keyName = "routingAfkCorpseLife",
+		name = "AFK corpse lifetime",
+		description = "Bounty AFK: how long a corpse lasts before it despawns (the loot alert's despawn warning counts back from this)",
+		section = bountyTasks,
+		position = 9
+	)
+	default int routingAfkCorpseLife()
+	{
+		return 180;
+	}
+
+	@Range(min = 5, max = 60)
+	@ConfigItem(
+		keyName = "routingAfkRange",
+		name = "AFK range (tiles)",
+		description = "Bounty AFK: a corpse, or a hit on the monster, counts only within this many tiles of your boat",
+		section = bountyTasks,
+		position = 10
+	)
+	default int routingAfkRange()
+	{
+		return 20;
+	}
+
+	@ConfigItem(
+		keyName = "routingAfkCrewLine",
+		name = "AFK crew alert on",
+		description = "Bounty AFK: your character's overhead line that means the crew went back to your targets by itself"
+			+ " (it posts a [Bounty AFK] crew line for Watchdog to flash on). Several can be given, separated by commas."
+			+ " Empty for no crew alert",
+		section = bountyTasks,
+		position = 11
+	)
+	default String routingAfkCrewLine()
+	{
+		return "Fire!";
+	}
+
 	// ---------------------------------------------------------------- Board reset tracker
 
 	@ConfigSection(

@@ -203,8 +203,6 @@ public class PortTasksPlugin extends Plugin
 	private BountyAfk bountyAfk;
 	private final Map<Integer, String> liveMonsters = new HashMap<>();
 	private final Map<Integer, String> deadMonsters = new HashMap<>();
-	/** Within this many tiles of the boat, a corpse or a hit counts as the boat's. */
-	private static final int AFK_RANGE = 20;
 	private int seaTaskId = -1;
 	private volatile BountySpawns.Area seaArea;
 	// Whether each port-gating quest is finished; absent until read this login.
@@ -1560,18 +1558,40 @@ public class PortTasksPlugin extends Plugin
 		return map.get(npcId);
 	}
 
-	/** Bounty AFK: the loot alert settings, in ticks (corpses last 300 ticks, as the despawn timer uses). */
+	private static int secondsToTicks(int seconds)
+	{
+		return (int) Math.ceil(seconds * 1000.0 / Constants.GAME_TICK_LENGTH);
+	}
+
+	/** Bounty AFK: true if this overhead text is one of the "AFK crew alert on" lines (whole line, any case). */
+	private boolean isCrewLine(String text)
+	{
+		if (text == null)
+		{
+			return false;
+		}
+		for (String line : config.routingAfkCrewLine().split(","))
+		{
+			if (!line.trim().isEmpty() && line.trim().equalsIgnoreCase(text.trim()))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Bounty AFK: the loot alert settings, in ticks (corpses last 3 minutes by default, as the despawn timer uses). */
 	private void applyAfkLootAlert()
 	{
-		bountyAfk.lootAlert(config.routingAfkLootCount(), 300,
-			(int) Math.ceil(config.routingAfkLootWarn() * 1000.0 / Constants.GAME_TICK_LENGTH));
+		bountyAfk.lootAlert(config.routingAfkLootCount(), secondsToTicks(config.routingAfkCorpseLife()),
+			secondsToTicks(config.routingAfkLootWarn()));
 	}
 
 	private boolean nearBoat(Actor actor)
 	{
 		WorldPoint boat = boatLocator.boatWorldPoint();
 		WorldPoint at = actor.getWorldLocation();
-		return boat != null && at != null && boat.distanceTo2D(at) <= AFK_RANGE;
+		return boat != null && at != null && boat.distanceTo2D(at) <= config.routingAfkRange();
 	}
 
 	/** The boat is stopped at sea (move mode 0) with the player on it. */
@@ -1650,7 +1670,7 @@ public class PortTasksPlugin extends Plugin
 			// player's own choices, so they get no alert. While armed, a line for Watchdog to flash on: off
 			// free-for-all, the AFK stops getting kills.
 			if (event.getActor() == client.getLocalPlayer() && bountyAfk.state() != BountyAfk.State.OFF
-				&& "fire!".equalsIgnoreCase(event.getOverheadText() == null ? "" : event.getOverheadText().trim()))
+				&& isCrewLine(event.getOverheadText()))
 			{
 				sendMessage(BountyAfk.PREFIX + "crew: following your targets");
 			}
