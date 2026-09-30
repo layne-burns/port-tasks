@@ -998,14 +998,25 @@ public class PortTasksPlugin extends Plugin
 	private void onMenuOptionClicked(final MenuOptionClicked event)
 	{
 		NPC clickedNpc = event.getMenuEntry().getNpc();
+		boolean examine = event.getMenuAction() == MenuAction.EXAMINE_NPC
+			|| "Examine".equalsIgnoreCase(Text.removeTags(event.getMenuOption()));
+		if (clickedNpc == null && event.getMenuAction() == MenuAction.EXAMINE_NPC && client.getTopLevelWorldView() != null)
+		{
+			// An examine entry may not carry its NPC; its id is the NPC's index in the (sea's) top-level world view.
+			clickedNpc = client.getTopLevelWorldView().npcs().byIndex(event.getId());
+		}
+		if (examine && boatLocator.onBoat())
+		{
+			log.info("[bountyafk] examine '{}' action {} id {} npc {}", event.getMenuTarget(), event.getMenuAction(), event.getId(),
+				clickedNpc == null ? null : clickedNpc.getId());
+		}
 		if (clickedNpc != null && boatLocator.onBoat())
 		{
 			bountyAfkDiagnostics.npcClick(event.getMenuOption(), event.getMenuTarget(), clickedNpc);
 			// Bounty AFK: examining the monster arms (or disarms) the mode.
 			String monster = afkMonster(liveMonsters, clickedNpc.getId());
 			AfkMonster wanted = config.routingAfkMonster();
-			if ("Examine".equalsIgnoreCase(Text.removeTags(event.getMenuOption())) && monster != null
-				&& (wanted == AfkMonster.AUTO || monster.equals(wanted.monster())))
+			if (examine && monster != null && (wanted == AfkMonster.AUTO || monster.equals(wanted.monster())))
 			{
 				bountyAfk.examine(monster, boatParked());
 			}
@@ -1601,9 +1612,9 @@ public class PortTasksPlugin extends Plugin
 			Hitsplat h = event.getHitsplat();
 			bountyAfkDiagnostics.hitsplat(event.getActor(), h.getHitsplatType(), h.isMine(), h.isOthers(), h.getAmount(),
 				boatLocator.boatWorldPoint());
-			// Bounty AFK: any hit on the armed monster near the boat counts as the boat attacking (the crew's
-			// cannon fire may not be marked "mine"; phase 0's log will tell whether to narrow this).
-			if (event.getActor() instanceof NPC && nearBoat(event.getActor()))
+			// Bounty AFK: the boat's hits on the armed monster count as attacking. Crew cannon fire is marked "mine"
+			// too (phase 0 log, 2026-09-30), so this covers auto-fire and ignores other players.
+			if (h.isMine() && event.getActor() instanceof NPC && nearBoat(event.getActor()))
 			{
 				String monster = afkMonster(liveMonsters, ((NPC) event.getActor()).getId());
 				if (monster != null)
@@ -1621,6 +1632,25 @@ public class PortTasksPlugin extends Plugin
 		if (boatLocator.onBoat())
 		{
 			bountyAfkDiagnostics.overhead(event.getActor(), event.getOverheadText());
+			// Bounty AFK: the crew's fire mode follows the captain's order, which is the player's own overhead text
+			// ("Attack my targets!", "Hold fire!"; phase 0 log). While armed, a line for Watchdog to flash on:
+			// crew not on free-for-all means the AFK loses kills.
+			if (event.getActor() == client.getLocalPlayer() && bountyAfk.state() != BountyAfk.State.OFF)
+			{
+				String order = event.getOverheadText() == null ? "" : event.getOverheadText().toLowerCase();
+				if (order.contains("attack my targets"))
+				{
+					sendMessage(BountyAfk.PREFIX + "crew: following your targets");
+				}
+				else if (order.contains("hold fire"))
+				{
+					sendMessage(BountyAfk.PREFIX + "crew: holding fire");
+				}
+				else if (order.contains("fire at will"))
+				{
+					sendMessage(BountyAfk.PREFIX + "crew: firing at will");
+				}
+			}
 		}
 	}
 
