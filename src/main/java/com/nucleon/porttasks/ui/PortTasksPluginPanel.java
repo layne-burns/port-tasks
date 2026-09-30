@@ -40,6 +40,7 @@ import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.LoopPorts;
+import com.nucleon.porttasks.routing.LoopStatus;
 import com.nucleon.porttasks.routing.LoopSuggester;
 import com.nucleon.porttasks.ui.adapters.ReloadPortTasks;
 
@@ -91,6 +92,7 @@ public class PortTasksPluginPanel extends PluginPanel
 		private final FitLabel loopLabel = new FitLabel();
 		private final JLabel suggestLink = new JLabel("Suggest loops");
 		private final JPanel suggestionsView = new JPanel();
+		private final JPanel statusView = new JPanel();
 		// Routing extension: which task rows are open ("c"/"b" + task dbrow), kept across rebuilds.
 		private final Set<String> openRows = new HashSet<>();
 		private final Map<Integer, BountyRow> bountyRows = new HashMap<>();
@@ -172,7 +174,10 @@ public class PortTasksPluginPanel extends PluginPanel
 			});
 			suggestionsView.setLayout(new BoxLayout(suggestionsView, BoxLayout.Y_AXIS));
 			suggestionsView.setAlignmentX(LEFT_ALIGNMENT);
+			statusView.setLayout(new BoxLayout(statusView, BoxLayout.Y_AXIS));
+			statusView.setAlignmentX(LEFT_ALIGNMENT);
 			loopView.add(loopLabel);
+			loopView.add(statusView);
 			loopView.add(suggestLink);
 			loopView.add(suggestionsView);
 			showLoop(config.routingLoop());
@@ -369,6 +374,57 @@ public class PortTasksPluginPanel extends PluginPanel
 			loopLabel.setToolTipText(loop.unknown().isEmpty() ? null
 				: "<html>Not a port (or more than one): " + String.join(", ", loop.unknown()) + "</html>");
 			loopLabel.setForeground(loop.unknown().isEmpty() ? Color.WHITE : Color.ORANGE);
+		}
+
+		/**
+		 * Routing extension: loop mode's phase and its boards (SPEC-routing.md §2.4.2): one line per loop board,
+		 * "not seen" or how many worthwhile in-loop tasks it still offers. Swing thread only.
+		 */
+		public void showLoopStatus(LoopStatus status)
+		{
+			statusView.removeAll();
+			if (status.phase != LoopStatus.Phase.OFF)
+			{
+				String phase;
+				Color colour;
+				switch (status.phase)
+				{
+					case GATHER:
+						phase = "Gather: look at each board";
+						colour = Color.YELLOW;
+						break;
+					case DRY:
+						phase = "Dry: " + status.tasksToReset + " tasks to board reset";
+						colour = Color.ORANGE;
+						break;
+					default:
+						phase = "Sail: " + status.tasksToReset + " tasks to board reset";
+						colour = Color.WHITE;
+						break;
+				}
+				statusView.add(smallLabel(phase, colour));
+				for (LoopStatus.Board b : status.boards)
+				{
+					FitLabel line = new FitLabel();
+					line.setFont(FontManager.getRunescapeSmallFont());
+					line.setAlignmentX(LEFT_ALIGNMENT);
+					String what = !b.seen ? "not seen" : b.worthwhile == 0 ? "nothing" : b.worthwhile + " to take";
+					line.setVersions("  " + PortNames.full(b.port) + ": " + what, "  " + PortNames.abbreviation(b.port) + ": " + what);
+					line.setForeground(!b.seen ? Color.YELLOW : b.worthwhile > 0 ? Color.WHITE : Color.GRAY);
+					statusView.add(line);
+				}
+			}
+			statusView.revalidate();
+			statusView.repaint();
+		}
+
+		private static JLabel smallLabel(String text, Color colour)
+		{
+			JLabel l = new JLabel(text);
+			l.setFont(FontManager.getRunescapeSmallFont());
+			l.setForeground(colour);
+			l.setAlignmentX(LEFT_ALIGNMENT);
+			return l;
 		}
 
 		/**

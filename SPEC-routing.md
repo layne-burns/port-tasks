@@ -106,6 +106,21 @@ Loops need at least **3 pool tasks per port** to qualify (without that floor, tw
 
 A density is not a rate: a board shows only part of its pool at a time, so the real XP per tile depends on the draw. It ranks loops by how much worthwhile work sits inside them per tile of sailing round them.
 
+#### 2.4.2 Loop mode: gather, sail, dry (added 2026-09-29)
+
+**Board behaviour it relies on.** Boards reroll together, reportedly after every **8 completed port tasks** and at the **daily reset** (00:00 UTC). Port Tasks' reset tracker counts this way, and the wiki marks the 8 as "confirmation needed". Between resets a board keeps its offers, minus what was taken. (This supersedes §6a's "boards change whenever tasks are handed in".) So:
+
+- **Memory.** Every opened board's courier offers are remembered for the current reset cycle, in the profile (key `routingLoopBoards`). They're forgotten when the 8-task count rolls over or the UTC day turns. The player's tile at each board is also kept, for guidance. **Check in play:** a reopened board showing offers it didn't have before is logged (`[loop] ... new offers without a reset`), which is how the 8-task rule gets tested.
+- A remembered offer is **worthwhile** if it is in the loop, its bag size is allowed, the level is high enough, and it isn't held.
+
+**Phases** (loop ports without a notice board are skipped):
+
+| Phase | When | What the plugin does |
+|---|---|---|
+| **Gather** | a loop board hasn't been seen this cycle | side panel lists each board as not seen / n to take; the next-stop panel says "Look at <port>". Off the boat, Shortest Path is pointed at the first unseen board (its remembered tile, else the port's dock tile) with the player's own settings, so teleports are used. On the boat, the sailing leg shows as usual |
+| **Sail** | all seen, some worthwhile offers left | normal routing. Docked at a loop port with a free slot, the text above the player says how many loop tasks its board still has |
+| **Dry** | all seen, none worthwhile | teleporting round again wouldn't help: nothing new comes before the reset. The board list switches to **fillers**: every task of any size, in or out of the loop, ranked by added cost (least first), with no best set and no dimming. It shows the tasks left until the reset. After the reset, the memory is empty and it's Gather again |
+
 ## 3. Travel cost `d(u, v)`
 
 No available plugin does sea pathfinding. As of 2026-09-24, Shortest Path says in its code that it doesn't model sailing navigation. Duckblade's Sailing plugin draws hazard overlays but doesn't plan routes. Plan:
@@ -167,7 +182,7 @@ Tabled. The user will flag routes that cross dangerous water; a flagged route-gr
 
 ## 6a. Later ideas (not in scope yet)
 
-Best combinations of offered tasks; swap suggestions when slots are full; an XP boost (keg) multiplier; splitting value into coins and items; XP/hour once times are learned; "against sweep" explanations; uncertainty markers. Remembering other boards' offers is **dropped**: boards change whenever tasks are handed in.
+Best combinations of offered tasks; swap suggestions when slots are full; an XP boost (keg) multiplier; splitting value into coins and items; XP/hour once times are learned; "against sweep" explanations; uncertainty markers. Remembering other boards' offers was dropped on the belief that boards change whenever tasks are handed in; loop mode (§2.4.2) now remembers loop boards, since boards change only at a reset.
 
 ## 7. Build phases (each ends with an in-game check by the user)
 

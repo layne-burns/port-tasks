@@ -1,6 +1,7 @@
 package com.nucleon.porttasks;
 
 import com.nucleon.porttasks.enums.PortLocation;
+import com.nucleon.porttasks.routing.LoopStatus;
 import com.nucleon.porttasks.routing.RoutePlanner;
 import com.nucleon.porttasks.routing.RoutingService;
 import java.awt.Color;
@@ -99,16 +100,79 @@ final class PortView
 	 * @param cargoName item id -> short cargo name ("lead" for "Crate of lead")
 	 */
 	static PortView build(List<CourierTask> tasks, RoutingService routing, PortLocation dockedPort, PortTasksConfig config,
-		String warning, IntFunction<String> cargoName)
+		String warning, IntFunction<String> cargoName, LoopStatus loop, int freeSlots)
 	{
+		String cargo = config.routingCargoReminder() ? reminder(tasks, dockedPort, cargoName) : null;
+		List<Line> lines = new ArrayList<>();
+		if (config.routingNextStopPanel())
+		{
+			lines.addAll(routeLines(tasks, routing, dockedPort, cargoName));
+			lines.addAll(loopLines(loop));
+		}
 		return new PortView(dockedPort,
-			warning != null ? warning : config.routingCargoReminder() ? reminder(tasks, dockedPort, cargoName) : null,
+			warning != null ? warning : cargo != null ? cargo : boardReminder(loop, dockedPort, freeSlots),
 			warning != null ? WARNING : REMINDER,
 			config.routingHighlightHold() ? crateMarks(tasks, routing, dockedPort) : Collections.emptyMap(),
 			config.routingTakeColor(),
 			helmMissing(tasks), helmColour(tasks),
 			ledgerLabels(tasks),
-			config.routingNextStopPanel() ? routeLines(tasks, routing, dockedPort, cargoName) : Collections.emptyList());
+			Collections.unmodifiableList(lines));
+	}
+
+	/**
+	 * Loop mode: docked at a loop port with a free task slot, where the board hasn't been seen since the reset
+	 * or still offers worthwhile in-loop tasks: a nudge to look. Null otherwise.
+	 */
+	static String boardReminder(LoopStatus loop, PortLocation docked, int freeSlots)
+	{
+		LoopStatus.Board b = docked == null || freeSlots <= 0 ? null : loop.board(docked);
+		if (b == null)
+		{
+			return null;
+		}
+		if (!b.seen)
+		{
+			return "Check the notice board";
+		}
+		return b.worthwhile > 0 ? "Notice board: " + b.worthwhile + " loop task" + (b.worthwhile == 1 ? "" : "s") : null;
+	}
+
+	/** Loop mode's lines for the next-stop panel: the phase, and while gathering, the boards still to see. */
+	private static List<Line> loopLines(LoopStatus loop)
+	{
+		List<Line> lines = new ArrayList<>();
+		switch (loop.phase)
+		{
+			case GATHER:
+				int seen = 0;
+				for (LoopStatus.Board b : loop.boards)
+				{
+					seen += b.seen ? 1 : 0;
+				}
+				lines.add(new Line("Loop: gather, " + seen + "/" + loop.boards.size() + " boards seen", REMINDER));
+				for (LoopStatus.Board b : loop.boards)
+				{
+					if (!b.seen)
+					{
+						lines.add(new Line("  Look at " + b.port.getName(), Color.LIGHT_GRAY));
+					}
+				}
+				break;
+			case SAIL:
+				int left = 0;
+				for (LoopStatus.Board b : loop.boards)
+				{
+					left += b.worthwhile;
+				}
+				lines.add(new Line("Loop: " + left + " task" + (left == 1 ? "" : "s") + " left on its boards", Color.WHITE));
+				break;
+			case DRY:
+				lines.add(new Line("Loop dry: " + loop.tasksToReset + " tasks to board reset", WARNING));
+				break;
+			default:
+				break;
+		}
+		return lines;
 	}
 
 	/**

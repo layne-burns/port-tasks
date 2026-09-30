@@ -128,6 +128,16 @@ public final class BoardScorer
 	 */
 	public List<Score> score(List<CourierTask> held, PortLocation start, Collection<CourierTaskData> offered, int sailingLevel)
 	{
+		return score(held, start, offered, sailingLevel, false);
+	}
+
+	/**
+	 * With {@code filler} (loop mode, the loop is dry: SPEC-routing.md §2.4.2) the point is to complete tasks
+	 * until the boards reset, so every size and every task counts, ranked by added cost, least first.
+	 */
+	public List<Score> score(List<CourierTask> held, PortLocation start, Collection<CourierTaskData> offered, int sailingLevel,
+		boolean filler)
+	{
 		PortLocation end = config.routingEnd().port();
 		double stopCost = config.routingStopCost();
 
@@ -154,7 +164,7 @@ public final class BoardScorer
 		List<Score> scores = new ArrayList<>();
 		for (CourierTaskData d : offered)
 		{
-			if (heldIds.contains(d.getId()) || !passesBagFilter(d) || sailingLevel > 0 && d.getLevelRequired() > sailingLevel)
+			if (heldIds.contains(d.getId()) || !filler && !passesBagFilter(d) || sailingLevel > 0 && d.getLevelRequired() > sailingLevel)
 			{
 				continue;
 			}
@@ -194,8 +204,8 @@ public final class BoardScorer
 		// metric order: the loop is a standing choice of where to sail, so a task leaving it is worth less than
 		// its own numbers say (the plan doesn't see what it costs to get back).
 		LoopPorts loop = loop();
-		Comparator<Score> order = comparator(config.routingRankBy());
-		if (loop.active())
+		Comparator<Score> order = filler ? Comparator.comparingDouble((Score s) -> s.addedCost) : comparator(config.routingRankBy());
+		if (loop.active() && !filler)
 		{
 			for (Score s : scores)
 			{

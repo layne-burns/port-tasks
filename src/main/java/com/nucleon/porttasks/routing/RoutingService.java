@@ -64,9 +64,19 @@ public final class RoutingService
 	private final PortTasksConfig config;
 	private final BoatLocator boats;
 	private final EventBus eventBus;
-	/** The leg last sent to Shortest Path (start and target ports), or nulls if we haven't set one. */
+	/** The sailing leg wanted (start and target ports), or nulls for none. */
 	private PortLocation shortestPathStart;
 	private PortLocation shortestPathTarget;
+	/**
+	 * Loop mode's gather target: a notice board to reach on foot, with the player's own Shortest Path settings
+	 * (teleports and all). While set it wins over the sailing leg. Null for none.
+	 */
+	private WorldPoint landTarget;
+	/**
+	 * What Shortest Path was last told ("clear", a sailing leg or a land target), or null to resend. Starts as
+	 * "clear" so a path the player set themselves isn't cleared before we have one of our own.
+	 */
+	private String sent = "clear";
 	private final RouteGraph graph = new RouteGraph();
 	private final RoutePlanner planner = new RoutePlanner(graph::distance);
 
@@ -203,42 +213,66 @@ public final class RoutingService
 	 */
 	public void resetShortestPath()
 	{
-		shortestPathStart = null;
-		shortestPathTarget = null;
+		if (!"clear".equals(sent))
+		{
+			sent = null;
+		}
+	}
+
+	/** Loop mode: a notice board to walk or teleport to, or null to go back to the sailing leg. */
+	public void setLandTarget(WorldPoint target)
+	{
+		landTarget = target;
+		publish();
+	}
+
+	/** Records the sailing leg wanted (the next stop's dock, or none) and tells Shortest Path if it changed. */
+	private void updateShortestPath(PortLocation start, PortLocation target)
+	{
+		shortestPathStart = target == null ? null : start;
+		shortestPathTarget = target;
+		publish();
 	}
 
 	/**
-	 * Points Shortest Path at the next stop's dock, or clears the target we set. Only sends on change.
+	 * Tells Shortest Path the land target if there is one, else the sailing leg, else clears what we set. Only
+	 * sends on change.
 	 *
-	 * The start is given explicitly (the boat's dock) rather than left to Shortest Path, which would use the
-	 * player's position: that fails right after login (no player yet, and the request is silently dropped) and
-	 * on a boat (the player is in the boat's own coordinates).
+	 * A sailing leg's start is given explicitly (the boat's dock) rather than left to Shortest Path, which would
+	 * use the player's position: that fails right after login (no player yet, and the request is silently
+	 * dropped) and on a boat (the player is in the boat's own coordinates). A land target has no start: it is
+	 * walked from wherever the player is. Before it, "clear" drops a sailing leg's settings override, so the
+	 * player's own teleports are used.
 	 */
-	private void updateShortestPath(PortLocation start, PortLocation target)
+	private void publish()
 	{
-		if (target == null)
-		{
-			start = null;
-		}
-		if (target == shortestPathTarget && start == shortestPathStart)
+		String want = landTarget != null ? "land " + landTarget
+			: shortestPathTarget != null ? "sail " + shortestPathStart + " > " + shortestPathTarget : "clear";
+		if (want.equals(sent))
 		{
 			return;
 		}
-		if (target == null)
+		if (landTarget != null)
 		{
 			eventBus.post(new PluginMessage(SHORTEST_PATH, "clear"));
+			Map<String, Object> data = new HashMap<>();
+			data.put("target", landTarget);
+			eventBus.post(new PluginMessage(SHORTEST_PATH, "path", data));
 		}
-		else
+		else if (shortestPathTarget != null)
 		{
 			Map<String, Object> data = new HashMap<>();
-			data.put("start", shortestPathDock(start));
-			data.put("target", shortestPathDock(target));
+			data.put("start", shortestPathDock(shortestPathStart));
+			data.put("target", shortestPathDock(shortestPathTarget));
 			data.put("config", SHORTEST_PATH_SAILING);
 			eventBus.post(new PluginMessage(SHORTEST_PATH, "path", data));
 		}
-		log.debug("[routing] Shortest Path leg: {} -> {}", start, target);
-		shortestPathStart = start;
-		shortestPathTarget = target;
+		else
+		{
+			eventBus.post(new PluginMessage(SHORTEST_PATH, "clear"));
+		}
+		log.debug("[routing] Shortest Path: {}", want);
+		sent = want;
 	}
 
 	private static WorldPoint shortestPathDock(PortLocation port)

@@ -36,7 +36,9 @@ import com.nucleon.porttasks.routing.BoatLocator;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.DepositGuard;
 import com.nucleon.porttasks.routing.DockGuard;
+import com.nucleon.porttasks.routing.LoopBoards;
 import com.nucleon.porttasks.routing.LoopPorts;
+import com.nucleon.porttasks.routing.LoopStatus;
 import com.nucleon.porttasks.routing.LoopSuggester;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
@@ -51,6 +53,7 @@ import java.awt.Color;
 import java.lang.reflect.Type;
 import java.time.Instant;
 import java.time.LocalDate;
+import net.runelite.api.coords.WorldPoint;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,6 +83,7 @@ import net.runelite.api.Menu;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.NPC;
+import net.runelite.api.Player;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
@@ -170,6 +174,9 @@ public class PortTasksPlugin extends Plugin
 	private RoutingDiagnostics routingDiagnostics;
 	private BoatLocator boatLocator;
 	private XpLearner xpLearner;
+	// Routing extension: loop mode's memory of the loop boards, and where loop mode stands (SPEC-routing.md §2.4.2).
+	private LoopBoards loopBoards;
+	private volatile LoopStatus loopStatus = LoopStatus.OFF;
 	RoutingService routingService;
 	BagCounter bagCounter;
 	private DepositGuard depositGuard;
@@ -412,6 +419,7 @@ public class PortTasksPlugin extends Plugin
 		migrateOnlyBigBags();
 		CourierWikiData courierWikiData = CourierWikiData.load(gson);
 		xpLearner = new XpLearner(configManager, CONFIG_GROUP, gson, courierWikiData);
+		loopBoards = new LoopBoards(configManager, CONFIG_GROUP, gson);
 		loadTaskColours();
 		bagCounter = new BagCounter(courierWikiData);
 		depositGuard = new DepositGuard(client);
@@ -631,8 +639,9 @@ public class PortTasksPlugin extends Plugin
 		{
 			lockedIn = event.getValue() != 0;
 		}
-		else if (varbitId == VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE)
+		else if (varbitId == VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE || varbitId == VarbitID.SAILING_PLAYER_IS_ON_PLAYER_BOAT)
 		{
+			// Boarding or leaving the boat also switches loop mode's guidance between land and sea.
 			rebuildView();
 		}
 		else if (RoutingDiagnostics.BOAT_VARBITS.containsKey(varbitId))
@@ -970,8 +979,73 @@ public class PortTasksPlugin extends Plugin
 	 */
 	private void rebuildView()
 	{
+		updateLoopStatus();
 		PortLocation docked = boatLocator.dockedPort();
-		view = PortView.build(courierTasks, routingService, docked, config, overheadWarning(docked), this::cargoName);
+		view = PortView.build(courierTasks, routingService, docked, config, overheadWarning(docked), this::cargoName,
+			loopStatus, freeSlots());
+	}
+
+	/**
+	 * Routing extension: works out where loop mode stands from the remembered loop boards (SPEC-routing.md
+	 * §2.4.2), and points Shortest Path at the next unseen board while gathering on foot. Called from
+	 * rebuildView, so on the same events.
+	 */
+	private void updateLoopStatus()
+	{
+		LoopPorts loop = boardScorer.loop();
+		Set<Integer> held = new HashSet<>();
+		for (CourierTask t : courierTasks)
+		{
+			held.add(t.getData().getId());
+		}
+		LoopStatus status = LoopStatus.of(loop, loopBoards, dbrow ->
+		{
+			CourierTaskData d = CourierTaskData.getByDbrow(dbrow);
+			return d != null && !held.contains(d.getId()) && loop.holds(d.getCargoLocation(), d.getDeliveryLocation())
+				&& boardScorer.passesBagFilter(d) && !(sailingLevel > 0 && d.getLevelRequired() > sailingLevel);
+		}, tasksToReset());
+		boolean phaseChanged = status.phase != loopStatus.phase;
+		boolean changed = !status.key().equals(loopStatus.key());
+		loopStatus = status;
+
+		PortLocation next = status.phase == LoopStatus.Phase.GATHER && !boatLocator.onBoat() ? status.nextUnseen() : null;
+		WorldPoint tile = next == null ? null : loopBoards.tile(next);
+		routingService.setLandTarget(next == null ? null : tile != null ? tile : next.getNavigationLocation());
+		if (phaseChanged)
+		{
+			log.debug("[loop] {}", status.phase);
+			if (!offeredTasks.isEmpty())
+			{
+				rescoreBoard(); // a dry loop ranks fillers
+			}
+		}
+		if (changed)
+		{
+			SwingUtilities.invokeLater(() -> pluginPanel.showLoopStatus(status));
+		}
+	}
+
+	/** Port tasks still to complete before the boards reset (the reset tracker's count, today's only). */
+	private int tasksToReset()
+	{
+		String lastStr = configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_LAST_TASK_COMPLETED);
+		String countStr = configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_TASKS_COMPLETED);
+		long midnightTodayUtc = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toEpochSecond(ZoneOffset.UTC);
+		try
+		{
+			long last = lastStr == null ? 0 : Long.parseLong(lastStr);
+			int count = countStr == null ? 0 : Integer.parseInt(countStr);
+			return last < midnightTodayUtc ? 8 : 8 - count;
+		}
+		catch (NumberFormatException e)
+		{
+			return 8;
+		}
+	}
+
+	private int freeSlots()
+	{
+		return Math.max(0, taskSlots() - courierTasks.size() - bountyTasks.size());
 	}
 
 	/** "Crate of lead" -> "lead". Client thread only. */
@@ -1028,8 +1102,9 @@ public class PortTasksPlugin extends Plugin
 	private void onGameTick(GameTick event)
 	{
 		// Whether the player is at a port on foot depends on where they stand, which has no event: one cheap check
-		// per tick while tasks are held, and the view is only rebuilt when the answer (or a timed warning) changes.
-		if (!courierTasks.isEmpty() || overheadWarning != null)
+		// per tick while tasks are held (or a loop is set: its board reminder), and the view is only rebuilt when
+		// the answer (or a timed warning) changes.
+		if (!courierTasks.isEmpty() || overheadWarning != null || loopStatus.phase != LoopStatus.Phase.OFF)
 		{
 			boolean warningOver = overheadWarning != null && client.getTickCount() > overheadWarningUntil;
 			if (warningOver)
@@ -1087,6 +1162,13 @@ public class PortTasksPlugin extends Plugin
 		}
 		configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_TASKS_COMPLETED, tasksCompleted);
 		configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_LAST_TASK_COMPLETED, now);
+		if (tasksCompleted == 0)
+		{
+			// Routing extension: the boards reroll now, so loop mode's memory of them is stale (the daily
+			// reset is caught by the memory's own date check).
+			loopBoards.reset("8 tasks");
+		}
+		rebuildView();
 		if (config.noticeBoardResetTracker())
 		{
 			final String message;
@@ -1288,8 +1370,42 @@ public class PortTasksPlugin extends Plugin
 
 			offeredTasks.put(dbrow, new OfferedTaskData(child, levelRequired));
 		}
+		rememberBoard();
 		updateBestXpPerTile();
+		rebuildView();
 		rescoreBoard();
+	}
+
+	/**
+	 * Routing extension: loop mode remembers this board's courier offers and where it stands (SPEC-routing.md
+	 * §2.4.2). Offers that weren't there last time are logged: boards should only change at a reset, and this
+	 * checks that in play.
+	 */
+	private void rememberBoard()
+	{
+		PortLocation board = null;
+		List<Integer> courier = new ArrayList<>();
+		for (Integer dbrow : offeredTasks.keySet())
+		{
+			CourierTaskData d = CourierTaskData.getByDbrow(dbrow);
+			if (d != null)
+			{
+				courier.add(dbrow);
+				board = d.getNoticeBoard();
+			}
+		}
+		if (board == null)
+		{
+			return;
+		}
+		Player player = client.getLocalPlayer();
+		boolean seenBefore = loopBoards.seen(board);
+		Set<Integer> added = loopBoards.opened(board, courier, player == null ? null : player.getWorldLocation());
+		if (seenBefore && !added.isEmpty())
+		{
+			log.info("[loop] {} board has {} new offers without a reset ({} tasks to reset): {}", board.getName(),
+				added.size(), tasksToReset(), added);
+		}
 	}
 
 	/**
@@ -1315,7 +1431,7 @@ public class PortTasksPlugin extends Plugin
 		}
 		PortLocation board = offered.get(0).getNoticeBoard();
 		PortLocation start = routingService.boatPort() != null ? routingService.boatPort() : board;
-		List<BoardScorer.Score> ranked = boardScorer.score(courierTasks, start, offered, sailingLevel);
+		List<BoardScorer.Score> ranked = boardScorer.score(courierTasks, start, offered, sailingLevel, loopDry());
 		Map<Integer, BoardScorer.Score> byDbrow = new HashMap<>();
 		for (BoardScorer.Score s : ranked)
 		{
@@ -1336,8 +1452,9 @@ public class PortTasksPlugin extends Plugin
 	 */
 	private void searchBestSet(PortLocation start, List<CourierTaskData> offered)
 	{
-		if (!config.routingBestSet())
+		if (!config.routingBestSet() || loopDry())
 		{
+			// A dry loop wants the quickest fillers, not the best rate: no set is suggested.
 			bestSet = null;
 			bestSetKey = null;
 			return;
@@ -1402,16 +1519,25 @@ public class PortTasksPlugin extends Plugin
 			return;
 		}
 		BoardScorer.RankBy by = config.routingRankBy();
+		boolean dry = loopDry();
 		List<PortTasksPluginPanel.BoardRow> rows = new ArrayList<>();
 		for (BoardScorer.Score s : lastRanked)
 		{
 			CourierTaskData d = CourierTaskData.getByDbrow(s.dbrow);
 			rows.add(new PortTasksPluginPanel.BoardRow(s.rank, d.getCargoLocation(), d.getDeliveryLocation(), s.name,
-				rankValue(s, by), String.join(", ", s.wantedDrops), s.detourColor, inBestSet(s.dbrow), s.offLoop));
+				dry ? String.format("+%.0f", s.addedCost) : rankValue(s, by), String.join(", ", s.wantedDrops), s.detourColor,
+				inBestSet(s.dbrow), s.offLoop));
 		}
-		String summary = bestSetSummary();
+		String summary = dry ? "Loop dry: " + loopStatus.tasksToReset + " tasks to board reset" : bestSetSummary();
+		String metric = dry ? "Fillers, quickest" : by.toString();
 		PortLocation board = lastBoard;
-		SwingUtilities.invokeLater(() -> pluginPanel.showBoard(board, by.toString(), rows, summary));
+		SwingUtilities.invokeLater(() -> pluginPanel.showBoard(board, metric, rows, summary));
+	}
+
+	/** Routing extension: loop mode says the loop boards have nothing worth taking left (fillers until the reset). */
+	private boolean loopDry()
+	{
+		return loopStatus.phase == LoopStatus.Phase.DRY;
 	}
 
 	/** One line about the best set for the side list, or null if the feature is off. */
@@ -1532,7 +1658,8 @@ public class PortTasksPlugin extends Plugin
 	/** Routing extension: true if the "only Large/Huge bags" filter rules out this offered courier task. */
 	public boolean bagFilterHides(CourierTaskData d)
 	{
-		return !boardScorer.passesBagFilter(d);
+		// A dry loop wants any task that gets the boards to their reset, so nothing is dimmed then.
+		return !loopDry() && !boardScorer.passesBagFilter(d);
 	}
 
 	/** Routing extension: base XP for a task (learned from play, else the wiki), or null. */

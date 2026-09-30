@@ -3,7 +3,7 @@ package com.nucleon.porttasks.routing;
 import com.nucleon.porttasks.enums.PortLocation;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -11,11 +11,12 @@ import java.util.Set;
 /**
  * The loop (SPEC-routing.md §2.4): the few ports the player sails between, typed as a list of port names
  * separated by commas or new lines. A name matches a port by its full name, with or without "The", or by the
- * start of it when only one port starts that way ("Deepfin", "Lunar"). Immutable.
+ * start of it when only one port starts that way ("Deepfin", "Lunar"). Kept in the order typed, which is the
+ * order boards are listed and visited in. Immutable.
  */
 public final class LoopPorts
 {
-	public static final LoopPorts NONE = new LoopPorts(EnumSet.noneOf(PortLocation.class), Collections.emptyList());
+	public static final LoopPorts NONE = new LoopPorts(new LinkedHashSet<>(), Collections.emptyList());
 
 	private final Set<PortLocation> ports;
 	/** Names that matched no port, or more than one, to show the player. */
@@ -33,7 +34,7 @@ public final class LoopPorts
 		{
 			return NONE;
 		}
-		Set<PortLocation> ports = EnumSet.noneOf(PortLocation.class);
+		Set<PortLocation> ports = new LinkedHashSet<>();
 		List<String> unknown = new ArrayList<>();
 		for (String part : text.split("[,\\n]"))
 		{
