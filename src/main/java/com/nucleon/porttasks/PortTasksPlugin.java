@@ -979,6 +979,7 @@ public class PortTasksPlugin extends Plugin
 	@Subscribe
 	private void onChatMessage(final ChatMessage event)
 	{
+		logChatForDiagnostics(event);
 		if (event.getType() != ChatMessageType.SPAM && event.getType() != ChatMessageType.GAMEMESSAGE)
 		{
 			return;
@@ -1623,9 +1624,8 @@ public class PortTasksPlugin extends Plugin
 		}
 	}
 
-	@SuppressWarnings("unused")
-	@Subscribe(priority = -1)
-	private void onChatMessageDiagnostics(ChatMessage event)
+	/** Bounty AFK phase 0: logs chat that isn't player chat while on the boat (the crew's fire-mode lines). */
+	private void logChatForDiagnostics(ChatMessage event)
 	{
 		ChatMessageType t = event.getType();
 		if (boatLocator.onBoat() && t != ChatMessageType.PUBLICCHAT && t != ChatMessageType.PRIVATECHAT
