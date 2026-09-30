@@ -1507,8 +1507,9 @@ public class PortTasksPlugin extends Plugin
 				rebuildView();
 			}
 		}
-		// Bounty AFK: only while a grace deadline runs (the boat moved and hasn't attacked since): one compare.
-		if (bountyAfk.graceRunning())
+		// Bounty AFK: only while a grace deadline runs (the boat moved and hasn't attacked since) or corpses wait for
+		// the loot alert's despawn warning: a compare or two.
+		if (bountyAfk.needsTick())
 		{
 			bountyAfk.tick(client.getTickCount());
 		}
@@ -1535,7 +1536,8 @@ public class PortTasksPlugin extends Plugin
 			String monster = afkMonster(deadMonsters, npcId);
 			if (monster != null && nearBoat(corpseNpc))
 			{
-				bountyAfk.corpse(monster);
+				applyAfkLootAlert();
+				bountyAfk.corpse(monster, corpseNpc.getIndex(), client.getTickCount());
 			}
 		}
 	}
@@ -1556,6 +1558,13 @@ public class PortTasksPlugin extends Plugin
 			}
 		}
 		return map.get(npcId);
+	}
+
+	/** Bounty AFK: the loot alert settings, in ticks (corpses last 300 ticks, as the despawn timer uses). */
+	private void applyAfkLootAlert()
+	{
+		bountyAfk.lootAlert(config.routingAfkLootCount(), 300,
+			(int) Math.ceil(config.routingAfkLootWarn() * 1000.0 / Constants.GAME_TICK_LENGTH));
 	}
 
 	private boolean nearBoat(Actor actor)
@@ -1594,9 +1603,13 @@ public class PortTasksPlugin extends Plugin
 	@Subscribe
 	private void onNpcDespawned(NpcDespawned event)
 	{
-		if (BountyTaskData.isBountyNpc(event.getNpc().getId()) && boatLocator.onBoat())
+		if (BountyTaskData.isBountyNpc(event.getNpc().getId()))
 		{
-			bountyAfkDiagnostics.corpse(event.getNpc(), false, boatLocator.boatWorldPoint());
+			bountyAfk.corpseGone(event.getNpc().getIndex());
+			if (boatLocator.onBoat())
+			{
+				bountyAfkDiagnostics.corpse(event.getNpc(), false, boatLocator.boatWorldPoint());
+			}
 		}
 		bountyCorpses.removeIf(corpse -> corpse.getNpc().equals(event.getNpc()));
 	}
@@ -1632,24 +1645,14 @@ public class PortTasksPlugin extends Plugin
 		if (boatLocator.onBoat())
 		{
 			bountyAfkDiagnostics.overhead(event.getActor(), event.getOverheadText());
-			// Bounty AFK: the crew's fire mode follows the captain's order, which is the player's own overhead text
-			// ("Attack my targets!", "Hold fire!"; phase 0 log). While armed, a line for Watchdog to flash on:
-			// crew not on free-for-all means the AFK loses kills.
-			if (event.getActor() == client.getLocalPlayer() && bountyAfk.state() != BountyAfk.State.OFF)
+			// Bounty AFK: when the crew leaves free-for-all by itself and goes back to the captain's targets, the
+			// player's overhead says "Fire!" (seen in play, 2026-09-30); "Attack my targets!" and "Hold fire!" are the
+			// player's own choices, so they get no alert. While armed, a line for Watchdog to flash on: off
+			// free-for-all, the AFK stops getting kills.
+			if (event.getActor() == client.getLocalPlayer() && bountyAfk.state() != BountyAfk.State.OFF
+				&& "fire!".equalsIgnoreCase(event.getOverheadText() == null ? "" : event.getOverheadText().trim()))
 			{
-				String order = event.getOverheadText() == null ? "" : event.getOverheadText().toLowerCase();
-				if (order.contains("attack my targets"))
-				{
-					sendMessage(BountyAfk.PREFIX + "crew: following your targets");
-				}
-				else if (order.contains("hold fire"))
-				{
-					sendMessage(BountyAfk.PREFIX + "crew: holding fire");
-				}
-				else if (order.contains("fire at will"))
-				{
-					sendMessage(BountyAfk.PREFIX + "crew: firing at will");
-				}
+				sendMessage(BountyAfk.PREFIX + "crew: following your targets");
 			}
 		}
 	}

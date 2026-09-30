@@ -748,6 +748,33 @@ public interface PortTasksConfig extends Config
 		return 20;
 	}
 
+	@Range(min = 1, max = 10)
+	@ConfigItem(
+		keyName = "routingAfkLootCount",
+		name = "AFK loot alert: corpses",
+		description = "Bounty AFK: the loot alert (flash) waits until this many corpses are waiting, so you loot in batches",
+		section = bountyTasks,
+		position = 7
+	)
+	default int routingAfkLootCount()
+	{
+		return 3;
+	}
+
+	@Range(min = 5, max = 120)
+	@Units(Units.SECONDS)
+	@ConfigItem(
+		keyName = "routingAfkLootWarn",
+		name = "AFK loot alert: before despawn",
+		description = "Bounty AFK: ... or until the oldest waiting corpse is this close to despawning (corpses last 3 minutes)",
+		section = bountyTasks,
+		position = 8
+	)
+	default int routingAfkLootWarn()
+	{
+		return 20;
+	}
+
 	// ---------------------------------------------------------------- Board reset tracker
 
 	@ConfigSection(
