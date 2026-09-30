@@ -201,6 +201,8 @@ public class PortTasksPlugin extends Plugin
 	private final BountyAfkDiagnostics bountyAfkDiagnostics = new BountyAfkDiagnostics();
 	// Routing extension: Bounty AFK (SPEC-routing.md §2.5.3), and bounty NPC id -> the wiki's monster name.
 	private BountyAfk bountyAfk;
+	// Turned off by examining it again: auto mode doesn't re-arm this monster until the player leaves the boat.
+	private String afkSuppressed;
 	private final Map<Integer, String> liveMonsters = new HashMap<>();
 	private final Map<Integer, String> deadMonsters = new HashMap<>();
 	private int seaTaskId = -1;
@@ -715,6 +717,7 @@ public class PortTasksPlugin extends Plugin
 			if (varbitId == VarbitID.SAILING_PLAYER_IS_ON_PLAYER_BOAT && event.getValue() == 0)
 			{
 				bountyAfk.off("left the boat");
+				afkSuppressed = null;
 			}
 			else if (varbitId == VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE)
 			{
@@ -1016,7 +1019,8 @@ public class PortTasksPlugin extends Plugin
 			AfkMonster wanted = config.routingAfkMonster();
 			if (examine && monster != null && (wanted == AfkMonster.AUTO || monster.equals(wanted.monster())))
 			{
-				bountyAfk.examine(monster, boatParked());
+				// Examining it again turns it off; auto mode then leaves that monster alone until off the boat.
+				afkSuppressed = bountyAfk.examine(monster, boatParked()) ? monster : null;
 			}
 		}
 		if (config.routingBlockWrongDeposit())
@@ -1526,7 +1530,9 @@ public class PortTasksPlugin extends Plugin
 		}
 
 		NPC corpseNpc = (NPC) event.getNpc();
-		BountyCorpse corpse = new BountyCorpse(corpseNpc, Instant.now(), client.getTickCount(), 300 * Constants.GAME_TICK_LENGTH);
+		// Routing extension: corpses last 200 ticks (2 minutes: four unlooted ones went at exactly 120 s in play,
+		// 2026-09-30), not the 300 this was written with, so the despawn timer no longer runs a minute long.
+		BountyCorpse corpse = new BountyCorpse(corpseNpc, Instant.now(), client.getTickCount(), 200 * Constants.GAME_TICK_LENGTH);
 		bountyCorpses.add(corpse);
 		if (boatLocator.onBoat())
 		{
@@ -1563,24 +1569,7 @@ public class PortTasksPlugin extends Plugin
 		return (int) Math.ceil(seconds * 1000.0 / Constants.GAME_TICK_LENGTH);
 	}
 
-	/** Bounty AFK: true if this overhead text is one of the "AFK crew alert on" lines (whole line, any case). */
-	private boolean isCrewLine(String text)
-	{
-		if (text == null)
-		{
-			return false;
-		}
-		for (String line : config.routingAfkCrewLine().split(","))
-		{
-			if (!line.trim().isEmpty() && line.trim().equalsIgnoreCase(text.trim()))
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/** Bounty AFK: the loot alert settings, in ticks (corpses last 3 minutes by default, as the despawn timer uses). */
+	/** Bounty AFK: the loot alert settings, in ticks (corpses last 2 minutes by default). */
 	private void applyAfkLootAlert()
 	{
 		bountyAfk.lootAlert(config.routingAfkLootCount(), secondsToTicks(config.routingAfkCorpseLife()),
@@ -1598,6 +1587,20 @@ public class PortTasksPlugin extends Plugin
 	private boolean boatParked()
 	{
 		return boatLocator.onBoat() && client.getVarbitValue(VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE) == 0;
+	}
+
+	/** Bounty AFK: a held bounty task for this monster still needs parts. */
+	private boolean holdsOpenBounty(String monster)
+	{
+		for (BountyTask t : bountyTasks)
+		{
+			BountyWikiData.Task w = bountyWiki.task(t.getData().getId());
+			if (w != null && w.monster.equals(monster) && t.getItemsCollected() < t.getData().itemQuantity)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Bounty AFK: off once the armed monster's held bounty has all its parts. */
@@ -1652,6 +1655,14 @@ public class PortTasksPlugin extends Plugin
 				String monster = afkMonster(liveMonsters, ((NPC) event.getActor()).getId());
 				if (monster != null)
 				{
+					// Auto mode: hitting the monster of a held, unfinished bounty switches the AFK on (examine is the
+					// manual switch, for when this doesn't).
+					AfkMonster wanted = config.routingAfkMonster();
+					if (bountyAfk.state() == BountyAfk.State.OFF && !monster.equals(afkSuppressed) && holdsOpenBounty(monster)
+						&& (wanted == AfkMonster.AUTO || monster.equals(wanted.monster())))
+					{
+						bountyAfk.autoArm(monster, boatParked());
+					}
 					bountyAfk.attacked(monster);
 				}
 			}
@@ -1665,15 +1676,6 @@ public class PortTasksPlugin extends Plugin
 		if (boatLocator.onBoat())
 		{
 			bountyAfkDiagnostics.overhead(event.getActor(), event.getOverheadText());
-			// Bounty AFK: when the crew leaves free-for-all by itself and goes back to the captain's targets, the
-			// player's overhead says "Fire!" (seen in play, 2026-09-30); "Attack my targets!" and "Hold fire!" are the
-			// player's own choices, so they get no alert. While armed, a line for Watchdog to flash on: off
-			// free-for-all, the AFK stops getting kills.
-			if (event.getActor() == client.getLocalPlayer() && bountyAfk.state() != BountyAfk.State.OFF
-				&& isCrewLine(event.getOverheadText()))
-			{
-				sendMessage(BountyAfk.PREFIX + "crew: following your targets");
-			}
 		}
 	}
 

@@ -74,6 +74,17 @@ public class BountyAfkTest
 	}
 
 	@Test
+	public void autoArmOnlyWhenOff()
+	{
+		afk.autoArm(SHARK, true);
+		assertEquals(BountyAfk.State.WAITING, afk.state());
+		afk.autoArm(SHARK, true); // already on: nothing new, and it doesn't toggle off like an examine
+		assertEquals(List.of("[Bounty AFK] on: Great white shark", "anki start"), out);
+		assertTrue(afk.examine(SHARK, true)); // the manual switch still turns it off
+		assertEquals(BountyAfk.State.OFF, afk.state());
+	}
+
+	@Test
 	public void examineAgainTurnsItOffAndStopsTheSession()
 	{
 		afk.examine(SHARK, true);

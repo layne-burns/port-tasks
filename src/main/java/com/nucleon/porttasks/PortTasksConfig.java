@@ -723,9 +723,9 @@ public interface PortTasksConfig extends Config
 	@ConfigItem(
 		keyName = "routingAfkMonster",
 		name = "AFK monster",
-		description = "Bounty AFK: examining this monster arms it (Auto: whichever bounty monster you examine; examine again to"
-			+ " stop). It posts [Bounty AFK] chat lines for Watchdog (blackout while fighting, gone when a corpse needs"
-			+ " looting) and runs AnkiScape's Bounty mode",
+		description = "Bounty AFK: switches on when your boat hits the monster of a bounty you hold (Auto: any of them), or"
+			+ " when you examine it (examine again to stop). It posts [Bounty AFK] chat lines for Watchdog (blackout while"
+			+ " fighting, gone when corpses need looting) and runs AnkiScape's Bounty mode",
 		section = bountyTasks,
 		position = 5
 	)
@@ -780,13 +780,14 @@ public interface PortTasksConfig extends Config
 	@ConfigItem(
 		keyName = "routingAfkCorpseLife",
 		name = "AFK corpse lifetime",
-		description = "Bounty AFK: how long a corpse lasts before it despawns (the loot alert's despawn warning counts back from this)",
+		description = "Bounty AFK: how long a corpse lasts before it despawns (the loot alert's despawn warning counts back from this)."
+			+ " Unlooted corpses went at exactly 2 minutes in play",
 		section = bountyTasks,
 		position = 9
 	)
 	default int routingAfkCorpseLife()
 	{
-		return 180;
+		return 120;
 	}
 
 	@Range(min = 5, max = 60)
@@ -800,20 +801,6 @@ public interface PortTasksConfig extends Config
 	default int routingAfkRange()
 	{
 		return 20;
-	}
-
-	@ConfigItem(
-		keyName = "routingAfkCrewLine",
-		name = "AFK crew alert on",
-		description = "Bounty AFK: your character's overhead line that means the crew went back to your targets by itself"
-			+ " (it posts a [Bounty AFK] crew line for Watchdog to flash on). Several can be given, separated by commas."
-			+ " Empty for no crew alert",
-		section = bountyTasks,
-		position = 11
-	)
-	default String routingAfkCrewLine()
-	{
-		return "Fire!";
 	}
 
 	// ---------------------------------------------------------------- Board reset tracker

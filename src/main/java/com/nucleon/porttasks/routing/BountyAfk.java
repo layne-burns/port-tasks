@@ -5,7 +5,7 @@ package com.nucleon.porttasks.routing;
  * events and it reports through a {@link Sink}: chat lines that Watchdog alerts match (show or dismiss the
  * blackout, flash the screen), and start/stop for AnkiScape's Bounty mode. Client thread only.
  *
- *   OFF     -examine monster->            WAITING  (blackout up; armed on that monster)
+ *   OFF     -the boat hits a held bounty's monster (auto), or examine any monster->   WAITING (armed on it)
  *   WAITING -3 corpses wait, or the oldest is ~20 s from despawning->   DOWN (blackout down, flash: loot)
  *   DOWN    -all looted, then the boat hits one->   WAITING  (blackout back)
  *   any     -examine it again / its bounty's parts are in / docked or off the boat
@@ -91,18 +91,36 @@ public final class BountyAfk
 		return graceUntil >= 0;
 	}
 
-	/** The player examined a bounty monster; {@code parked} if the boat is stopped at sea. */
-	public void examine(String examined, boolean parked)
+	/**
+	 * The player examined a sea monster (the manual switch; any monster): arms on it, or, if already armed on
+	 * it, turns off. {@code parked} if the boat is stopped at sea. Returns true if this turned the mode off.
+	 */
+	public boolean examine(String examined, boolean parked)
 	{
 		if (state != State.OFF && examined.equals(monster))
 		{
 			off("examined again");
-			return;
+			return true;
 		}
 		if (state != State.OFF)
 		{
 			off("switched to " + examined);
 		}
+		arm(examined, parked);
+		return false;
+	}
+
+	/** Auto mode: the boat hit a monster of a held bounty; arms on it unless the mode is already on. */
+	public void autoArm(String hit, boolean parked)
+	{
+		if (state == State.OFF)
+		{
+			arm(hit, parked);
+		}
+	}
+
+	private void arm(String examined, boolean parked)
+	{
 		monster = examined;
 		state = State.WAITING;
 		graceUntil = -1;
