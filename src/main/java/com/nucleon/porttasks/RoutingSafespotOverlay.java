@@ -6,6 +6,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
+import java.util.ArrayList;
+import java.util.List;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
@@ -51,24 +53,37 @@ class RoutingSafespotOverlay extends Overlay
 		{
 			return null;
 		}
-		int[] r = area.safespot;
+		// A saved safespot with a heading is a "park here" line along the boat; otherwise the safespot's rectangle.
+		List<WorldPoint> tiles = new ArrayList<>();
+		if (area.line != null)
+		{
+			tiles.addAll(area.line);
+		}
+		else
+		{
+			int[] r = area.safespot;
+			for (int x = r[0]; x < r[0] + r[2]; x++)
+			{
+				for (int y = r[1]; y < r[1] + r[3]; y++)
+				{
+					tiles.add(new WorldPoint(x, y, 0));
+				}
+			}
+		}
 		graphics.setStroke(new BasicStroke(2));
 		LocalPoint label = null;
-		for (int x = r[0]; x < r[0] + r[2]; x++)
+		for (WorldPoint t : tiles)
 		{
-			for (int y = r[1]; y < r[1] + r[3]; y++)
+			LocalPoint lp = LocalPoint.fromWorld(top, new WorldPoint(t.getX(), t.getY(), top.getPlane()));
+			if (lp == null)
 			{
-				LocalPoint lp = LocalPoint.fromWorld(top, new WorldPoint(x, y, top.getPlane()));
-				if (lp == null)
-				{
-					continue;
-				}
-				Polygon poly = Perspective.getCanvasTilePoly(client, lp);
-				if (poly != null)
-				{
-					OverlayUtil.renderPolygon(graphics, poly, COLOUR);
-					label = label == null ? lp : label;
-				}
+				continue;
+			}
+			Polygon poly = Perspective.getCanvasTilePoly(client, lp);
+			if (poly != null)
+			{
+				OverlayUtil.renderPolygon(graphics, poly, COLOUR);
+				label = label == null ? lp : label;
 			}
 		}
 		if (label != null)

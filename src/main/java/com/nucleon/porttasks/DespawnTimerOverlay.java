@@ -7,6 +7,7 @@ import java.time.Instant;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.Constants;
 import net.runelite.api.Point;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -64,7 +65,8 @@ public class DespawnTimerOverlay extends Overlay
 			if (config.corpseOverlay() == PortTasksConfig.Despawn.PIE)
 			{
 				float percent = ((float)tracker.getDespawnTime() - (now.toEpochMilli() - tracker.getStartTime().toEpochMilli())) / ((float)tracker.getDespawnTime());
-				Point point = tracker.getNpc().getCanvasTextLocation(graphics, "", 0);
+				// Routing extension: drawn above the model's head, not at its feet, where the corpse's model covered it.
+				Point point = tracker.getNpc().getCanvasTextLocation(graphics, "", aboveModel(tracker));
 
 				if (point == null || percent > 1.0f)
 				{
@@ -81,13 +83,15 @@ public class DespawnTimerOverlay extends Overlay
 			}
 			else if (config.corpseOverlay() == PortTasksConfig.Despawn.TICKS)
 			{
-				int ticksRemaining = 300 - (tickCount - tracker.getTickCount());
-				if (ticksRemaining < 0 || ticksRemaining > 300)
+				// Routing extension: counts from the corpse's own lifetime (200 ticks), not a fixed 300.
+				int lifeTicks = tracker.getDespawnTime() / Constants.GAME_TICK_LENGTH;
+				int ticksRemaining = lifeTicks - (tickCount - tracker.getTickCount());
+				if (ticksRemaining < 0 || ticksRemaining > lifeTicks)
 				{
 					continue;
 				}
 
-				Point point = tracker.getNpc().getCanvasTextLocation(graphics, String.valueOf(ticksRemaining), 0);
+				Point point = tracker.getNpc().getCanvasTextLocation(graphics, String.valueOf(ticksRemaining), aboveModel(tracker));
 
 				if (point == null)
 				{
@@ -97,6 +101,12 @@ public class DespawnTimerOverlay extends Overlay
 				OverlayUtil.renderTextLocation(graphics, point, String.valueOf(ticksRemaining), ticksRemaining > 30 ? Color.WHITE : Color.RED);
 			}
 		}
+	}
+
+	/** Height to draw at: just above the corpse's model (its logical height, plus a margin). */
+	private static int aboveModel(BountyCorpse tracker)
+	{
+		return tracker.getNpc().getLogicalHeight() + 40;
 	}
 
 	private Color lerpColor(Color start, Color end, float percent)

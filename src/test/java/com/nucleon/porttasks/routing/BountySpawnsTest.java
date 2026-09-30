@@ -49,6 +49,20 @@ public class BountySpawnsTest
 	}
 
 	@Test
+	public void parkLineRunsAlongTheBoatsHeading()
+	{
+		// Heading north (1024): five tiles in a column centred on the boat.
+		BountySpawns.Area north = BountySpawns.parkLine("Shark", 100, 200, 1024);
+		assertEquals(List.of(new WorldPoint(100, 198, 0), new WorldPoint(100, 199, 0), new WorldPoint(100, 200, 0),
+			new WorldPoint(100, 201, 0), new WorldPoint(100, 202, 0)), north.line);
+		// Heading east (1536): a row.
+		BountySpawns.Area east = BountySpawns.parkLine("Shark", 100, 200, 1536);
+		assertEquals(new WorldPoint(98, 200, 0), east.line.get(0));
+		assertEquals(new WorldPoint(102, 200, 0), east.line.get(4));
+		assertEquals(new WorldPoint(100, 200, 0), east.target);
+	}
+
+	@Test
 	public void safespotRectangleIsCentredOnTheMapPin()
 	{
 		BountySpawns.Area s = BountySpawns.safespot("Orca", "x", 2268, 3747, 3, 9);

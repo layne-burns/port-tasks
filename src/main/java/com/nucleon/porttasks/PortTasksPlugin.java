@@ -1239,7 +1239,7 @@ public class PortTasksPlugin extends Plugin
 				sendMessage("Save a safespot at sea, while sailing for a bounty monster.");
 				return;
 			}
-			savedSafespots.add(area.monster, boat);
+			savedSafespots.add(area.monster, boat, boatLocator.boatOrientation());
 			sendMessage("Saved a " + area.monster + " safespot at " + boat.getX() + ", " + boat.getY() + ".");
 			seaArea = null; // re-choose, now with the safespot
 			rebuildView();

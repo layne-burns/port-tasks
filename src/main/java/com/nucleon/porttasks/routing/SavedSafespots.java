@@ -53,9 +53,11 @@ public final class SavedSafespots
 		}
 	}
 
-	public void add(String monster, WorldPoint tile)
+	/** Saves the boat's tile and heading ({@code orientation} -1 if unknown: marked as a single square). */
+	public void add(String monster, WorldPoint tile, int orientation)
 	{
-		spots.computeIfAbsent(monster, k -> new ArrayList<>()).add(new int[]{tile.getX(), tile.getY()});
+		spots.computeIfAbsent(monster, k -> new ArrayList<>()).add(orientation < 0
+			? new int[]{tile.getX(), tile.getY()} : new int[]{tile.getX(), tile.getY(), orientation});
 		save();
 	}
 
@@ -82,7 +84,9 @@ public final class SavedSafespots
 			List<BountySpawns.Area> areas = new ArrayList<>();
 			for (int[] t : tiles)
 			{
-				areas.add(BountySpawns.safespot(monster, "saved", t[0], t[1], 1, 1));
+				// Saved with the boat's heading: a "park here" line; saved before headings were kept: one square.
+				areas.add(t.length >= 3 ? BountySpawns.parkLine(monster, t[0], t[1], t[2])
+					: BountySpawns.safespot(monster, "saved", t[0], t[1], 1, 1));
 			}
 			out.put(monster, areas);
 		});

@@ -34,6 +34,8 @@ public final class BountySpawns
 		public final WorldPoint target;
 		/** For a safespot: its tiles as a rectangle {x, y, width, height} (south-west corner), else null. */
 		public final int[] safespot;
+		/** For a saved safespot with a heading: the "park here" line of tiles along the boat, else null. */
+		public List<WorldPoint> line;
 
 		Area(String monster, String location, List<WorldPoint> points)
 		{
@@ -118,6 +120,33 @@ public final class BountySpawns
 		WorldPoint centre = new WorldPoint(cx, cy, 0);
 		return new Area(monster, "Safespot" + (caption == null || caption.isEmpty() ? "" : ": " + caption),
 			Collections.singletonList(centre), new int[]{cx - w / 2, cy - h / 2, Math.max(1, w), Math.max(1, h)});
+	}
+
+	/** Tiles in the "park here" line of a saved safespot: this many, centred on where the boat was. */
+	static final int PARK_LINE_TILES = 5;
+
+	/**
+	 * A saved safespot with the boat's heading: a single-tile-wide line along the boat, centred on its tile, so it
+	 * reads as "park here, pointing this way". Orientation is in RuneScape angle units (0 south, 512 west, 1024
+	 * north, 1536 east), so the heading's unit vector is (-sin a, -cos a).
+	 */
+	static Area parkLine(String monster, int x, int y, int orientation)
+	{
+		Area a = safespot(monster, "saved", x, y, 1, 1);
+		double angle = orientation * 2 * Math.PI / 2048;
+		double dx = -Math.sin(angle);
+		double dy = -Math.cos(angle);
+		List<WorldPoint> tiles = new ArrayList<>();
+		for (int i = -PARK_LINE_TILES / 2; i <= PARK_LINE_TILES / 2; i++)
+		{
+			WorldPoint t = new WorldPoint((int) Math.round(x + i * dx), (int) Math.round(y + i * dy), 0);
+			if (!tiles.contains(t))
+			{
+				tiles.add(t);
+			}
+		}
+		a.line = Collections.unmodifiableList(tiles);
+		return a;
 	}
 
 	/** The wiki's safespots for a monster (with a map); usually none. */

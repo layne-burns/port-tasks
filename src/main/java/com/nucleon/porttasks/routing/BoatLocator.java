@@ -123,6 +123,22 @@ public final class BoatLocator
 	}
 
 	/**
+	 * The heading of the boat the player is on, in RuneScape angle units (0-2047: 0 south, 512 west, 1024 north,
+	 * 1536 east), or -1 if they aren't on a boat.
+	 */
+	public int boatOrientation()
+	{
+		Player player = client.getLocalPlayer();
+		WorldView view = player == null ? null : player.getWorldView();
+		if (view == null || view.isTopLevel() || view.getId() == WorldView.TOPLEVEL)
+		{
+			return -1;
+		}
+		WorldEntity boat = client.getTopLevelWorldView().worldEntities().byIndex(view.getId());
+		return boat == null ? -1 : boat.getOrientation();
+	}
+
+	/**
 	 * Port where the current boat was last docked, or null if unknown. The varbit keeps this dock while the
 	 * boat is at sea, so it is the start for planning, not a test for being at port (see {@link #dockedPort()}).
 	 */
