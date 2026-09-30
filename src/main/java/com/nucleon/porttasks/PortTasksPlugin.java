@@ -33,6 +33,7 @@ import com.nucleon.porttasks.routing.BagCounter;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BoatLocator;
+import com.nucleon.porttasks.routing.BountyAfkDiagnostics;
 import com.nucleon.porttasks.routing.BountyHunt;
 import com.nucleon.porttasks.routing.BountySpawns;
 import com.nucleon.porttasks.routing.SavedSafespots;
@@ -93,6 +94,9 @@ import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.OverheadTextChanged;
+import net.runelite.api.Hitsplat;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
@@ -190,6 +194,7 @@ public class PortTasksPlugin extends Plugin
 	// the held bounty task being hunted with the area chosen for it (kept until its parts are in).
 	private BountySpawns bountySpawns;
 	private SavedSafespots savedSafespots;
+	private final BountyAfkDiagnostics bountyAfkDiagnostics = new BountyAfkDiagnostics();
 	private int seaTaskId = -1;
 	private volatile BountySpawns.Area seaArea;
 	// Whether each port-gating quest is finished; absent until read this login.
@@ -936,6 +941,11 @@ public class PortTasksPlugin extends Plugin
 	@Subscribe
 	private void onMenuOptionClicked(final MenuOptionClicked event)
 	{
+		NPC clickedNpc = event.getMenuEntry().getNpc();
+		if (clickedNpc != null && boatLocator.onBoat())
+		{
+			bountyAfkDiagnostics.npcClick(event.getMenuOption(), event.getMenuTarget(), clickedNpc);
+		}
 		if (config.routingBlockWrongDeposit())
 		{
 			String reason = depositGuard.check(event.getMenuOption(), event.getId(), courierTasks);
@@ -1439,13 +1449,57 @@ public class PortTasksPlugin extends Plugin
 		NPC corpseNpc = (NPC) event.getNpc();
 		BountyCorpse corpse = new BountyCorpse(corpseNpc, Instant.now(), client.getTickCount(), 300 * Constants.GAME_TICK_LENGTH);
 		bountyCorpses.add(corpse);
+		if (boatLocator.onBoat())
+		{
+			bountyAfkDiagnostics.corpse(corpseNpc, true, boatLocator.boatWorldPoint());
+		}
 	}
 
 	@SuppressWarnings("unused")
 	@Subscribe
 	private void onNpcDespawned(NpcDespawned event)
 	{
+		if (BountyTaskData.isBountyNpc(event.getNpc().getId()) && boatLocator.onBoat())
+		{
+			bountyAfkDiagnostics.corpse(event.getNpc(), false, boatLocator.boatWorldPoint());
+		}
 		bountyCorpses.removeIf(corpse -> corpse.getNpc().equals(event.getNpc()));
+	}
+
+	// ---- Bounty AFK, phase 0: what the game shows while hunting (routing/BountyAfkDiagnostics) ----
+
+	@SuppressWarnings("unused")
+	@Subscribe
+	private void onHitsplatApplied(HitsplatApplied event)
+	{
+		if (boatLocator.onBoat())
+		{
+			Hitsplat h = event.getHitsplat();
+			bountyAfkDiagnostics.hitsplat(event.getActor(), h.getHitsplatType(), h.isMine(), h.isOthers(), h.getAmount(),
+				boatLocator.boatWorldPoint());
+		}
+	}
+
+	@SuppressWarnings("unused")
+	@Subscribe
+	private void onOverheadTextChanged(OverheadTextChanged event)
+	{
+		if (boatLocator.onBoat())
+		{
+			bountyAfkDiagnostics.overhead(event.getActor(), event.getOverheadText());
+		}
+	}
+
+	@SuppressWarnings("unused")
+	@Subscribe(priority = -1)
+	private void onChatMessageDiagnostics(ChatMessage event)
+	{
+		ChatMessageType t = event.getType();
+		if (boatLocator.onBoat() && t != ChatMessageType.PUBLICCHAT && t != ChatMessageType.PRIVATECHAT
+			&& t != ChatMessageType.PRIVATECHATOUT && t != ChatMessageType.FRIENDSCHAT && t != ChatMessageType.CLAN_CHAT)
+		{
+			bountyAfkDiagnostics.chat(t.name(), event.getName(), event.getMessage());
+		}
 	}
 
 	private void handleTaskCompleted()

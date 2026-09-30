@@ -189,4 +189,10 @@ public final class BountyTaskData
 	{
 		return BOUNTY_NPCS.contains(id);
 	}
+
+	/** Routing extension: every bounty task, e.g. to find a monster's live and dead NPC ids. */
+	public static java.util.Collection<BountyTaskData> all()
+	{
+		return java.util.Collections.unmodifiableCollection(BY_ID.values());
+	}
 }
