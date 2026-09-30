@@ -26,6 +26,7 @@
  */
 package com.nucleon.porttasks;
 
+import com.nucleon.porttasks.routing.AfkMonster;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.RouteEnd;
 import java.awt.Color;
@@ -34,6 +35,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
+import net.runelite.client.config.Units;
 
 /**
  * Settings, grouped by where they act: planning the route, the notice board, at port and on board, the
@@ -716,6 +718,34 @@ public interface PortTasksConfig extends Config
 	default boolean routingBountySail()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "routingAfkMonster",
+		name = "AFK monster",
+		description = "Bounty AFK: examining this monster arms it (Auto: whichever bounty monster you examine; examine again to"
+			+ " stop). It posts [Bounty AFK] chat lines for Watchdog (blackout while fighting, gone when a corpse needs"
+			+ " looting) and runs AnkiScape's Bounty mode",
+		section = bountyTasks,
+		position = 5
+	)
+	default AfkMonster routingAfkMonster()
+	{
+		return AfkMonster.AUTO;
+	}
+
+	@Range(min = 5, max = 120)
+	@Units(Units.SECONDS)
+	@ConfigItem(
+		keyName = "routingAfkGrace",
+		name = "AFK grace after moving",
+		description = "Bounty AFK: after the boat moves, it ends unless the boat attacks the monster again within this long",
+		section = bountyTasks,
+		position = 6
+	)
+	default int routingAfkGrace()
+	{
+		return 20;
 	}
 
 	// ---------------------------------------------------------------- Board reset tracker

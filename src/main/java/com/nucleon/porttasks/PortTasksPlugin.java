@@ -33,6 +33,8 @@ import com.nucleon.porttasks.routing.BagCounter;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BoatLocator;
+import com.nucleon.porttasks.routing.AfkMonster;
+import com.nucleon.porttasks.routing.BountyAfk;
 import com.nucleon.porttasks.routing.BountyAfkDiagnostics;
 import com.nucleon.porttasks.routing.BountyHunt;
 import com.nucleon.porttasks.routing.BountySpawns;
@@ -79,6 +81,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.Actor;
 import net.runelite.api.Constants;
 import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
@@ -139,6 +142,7 @@ import java.util.function.Consumer;
 import java.util.concurrent.Executors;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
+import net.runelite.client.events.PluginMessage;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -195,6 +199,12 @@ public class PortTasksPlugin extends Plugin
 	private BountySpawns bountySpawns;
 	private SavedSafespots savedSafespots;
 	private final BountyAfkDiagnostics bountyAfkDiagnostics = new BountyAfkDiagnostics();
+	// Routing extension: Bounty AFK (SPEC-routing.md §2.5.3), and bounty NPC id -> the wiki's monster name.
+	private BountyAfk bountyAfk;
+	private final Map<Integer, String> liveMonsters = new HashMap<>();
+	private final Map<Integer, String> deadMonsters = new HashMap<>();
+	/** Within this many tiles of the boat, a corpse or a hit counts as the boat's. */
+	private static final int AFK_RANGE = 20;
 	private int seaTaskId = -1;
 	private volatile BountySpawns.Area seaArea;
 	// Whether each port-gating quest is finished; absent until read this login.
@@ -455,6 +465,28 @@ public class PortTasksPlugin extends Plugin
 		bountyWiki = BountyWikiData.load(gson);
 		bountySpawns = BountySpawns.load(gson);
 		savedSafespots = new SavedSafespots(configManager, CONFIG_GROUP, gson);
+		bountyAfk = new BountyAfk(new BountyAfk.Sink()
+		{
+			@Override
+			public void chat(String line)
+			{
+				sendMessage(line);
+				log.info("[bountyafk] {}", line);
+				String status = bountyAfk.state() == BountyAfk.State.OFF ? null
+					: bountyAfk.monster() + (bountyAfk.state() == BountyAfk.State.DOWN ? " · corpse, loot it" : " · blacked out");
+				SwingUtilities.invokeLater(() -> pluginPanel.showAfk(status));
+			}
+
+			@Override
+			public void anki(String action, String monster)
+			{
+				// AnkiScape's Bounty mode listens for this (it ignores it when its Bounty mode is off).
+				Map<String, Object> data = new HashMap<>();
+				data.put("action", action);
+				data.put("monster", monster);
+				eventBus.post(new PluginMessage("porttasks", "bountyAfk", data));
+			}
+		});
 		boardScorer = new BoardScorer(routingService.graph(), courierWikiData, xpLearner, rewardValuer, wantedItems, config);
 		updateBestXpPerTile();
 		clientThread.invoke(() ->
@@ -659,6 +691,7 @@ public class PortTasksPlugin extends Plugin
 			PortTaskTrigger varbit = PortTaskTrigger.fromId(event.getVarbitId());
 			int value = event.getValue();
 			handlePortTaskTrigger(varbit, value);
+			checkAfkParts();
 			routingService.replan(courierTasks);
 			if (!offeredTasks.isEmpty())
 			{
@@ -678,6 +711,28 @@ public class PortTasksPlugin extends Plugin
 				&& loopStatus.phase == LoopStatus.Phase.GATHER)
 			{
 				loopBoards.endGather();
+			}
+			// Bounty AFK: moving starts the grace, stopping at sea may start the Anki session, docking or
+			// leaving the boat ends it (move mode: 0 stopped at sea, 1-3 moving, 4 docked).
+			if (varbitId == VarbitID.SAILING_PLAYER_IS_ON_PLAYER_BOAT && event.getValue() == 0)
+			{
+				bountyAfk.off("left the boat");
+			}
+			else if (varbitId == VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE)
+			{
+				int mode = event.getValue();
+				if (mode >= 1 && mode <= 3)
+				{
+					bountyAfk.moving(client.getTickCount(), (int) Math.ceil(config.routingAfkGrace() * 1000.0 / Constants.GAME_TICK_LENGTH));
+				}
+				else if (mode == 0)
+				{
+					bountyAfk.parked();
+				}
+				else if (mode == 4)
+				{
+					bountyAfk.off("docked");
+				}
 			}
 			rebuildView();
 		}
@@ -945,6 +1000,14 @@ public class PortTasksPlugin extends Plugin
 		if (clickedNpc != null && boatLocator.onBoat())
 		{
 			bountyAfkDiagnostics.npcClick(event.getMenuOption(), event.getMenuTarget(), clickedNpc);
+			// Bounty AFK: examining the monster arms (or disarms) the mode.
+			String monster = afkMonster(liveMonsters, clickedNpc.getId());
+			AfkMonster wanted = config.routingAfkMonster();
+			if ("Examine".equalsIgnoreCase(Text.removeTags(event.getMenuOption())) && monster != null
+				&& (wanted == AfkMonster.AUTO || monster.equals(wanted.monster())))
+			{
+				bountyAfk.examine(monster, boatParked());
+			}
 		}
 		if (config.routingBlockWrongDeposit())
 		{
@@ -1432,6 +1495,11 @@ public class PortTasksPlugin extends Plugin
 				rebuildView();
 			}
 		}
+		// Bounty AFK: only while a grace deadline runs (the boat moved and hasn't attacked since): one compare.
+		if (bountyAfk.graceRunning())
+		{
+			bountyAfk.tick(client.getTickCount());
+		}
 		// prune tracked objects that have passed their timer
 		bountyCorpses.removeIf(corpse -> Instant.now().toEpochMilli() > corpse.getStartTime().toEpochMilli() + corpse.getDespawnTime());
 	}
@@ -1452,6 +1520,61 @@ public class PortTasksPlugin extends Plugin
 		if (boatLocator.onBoat())
 		{
 			bountyAfkDiagnostics.corpse(corpseNpc, true, boatLocator.boatWorldPoint());
+			String monster = afkMonster(deadMonsters, npcId);
+			if (monster != null && nearBoat(corpseNpc))
+			{
+				bountyAfk.corpse(monster);
+			}
+		}
+	}
+
+	/** Bounty AFK: the wiki monster name for a bounty NPC id (live or dead map), building the maps on first use. */
+	private String afkMonster(Map<Integer, String> map, int npcId)
+	{
+		if (liveMonsters.isEmpty())
+		{
+			for (BountyTaskData d : BountyTaskData.all())
+			{
+				BountyWikiData.Task w = bountyWiki.task(d.getId());
+				if (w != null)
+				{
+					liveMonsters.put(d.npcId, w.monster);
+					deadMonsters.put(d.getDeadNpcId(), w.monster);
+				}
+			}
+		}
+		return map.get(npcId);
+	}
+
+	private boolean nearBoat(Actor actor)
+	{
+		WorldPoint boat = boatLocator.boatWorldPoint();
+		WorldPoint at = actor.getWorldLocation();
+		return boat != null && at != null && boat.distanceTo2D(at) <= AFK_RANGE;
+	}
+
+	/** The boat is stopped at sea (move mode 0) with the player on it. */
+	private boolean boatParked()
+	{
+		return boatLocator.onBoat() && client.getVarbitValue(VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE) == 0;
+	}
+
+	/** Bounty AFK: off once the armed monster's held bounty has all its parts. */
+	private void checkAfkParts()
+	{
+		String monster = bountyAfk.monster();
+		if (monster == null)
+		{
+			return;
+		}
+		for (BountyTask t : bountyTasks)
+		{
+			BountyWikiData.Task w = bountyWiki.task(t.getData().getId());
+			if (w != null && w.monster.equals(monster) && t.getItemsCollected() >= t.getData().itemQuantity)
+			{
+				bountyAfk.off(monster + " parts in");
+				return;
+			}
 		}
 	}
 
@@ -1477,6 +1600,16 @@ public class PortTasksPlugin extends Plugin
 			Hitsplat h = event.getHitsplat();
 			bountyAfkDiagnostics.hitsplat(event.getActor(), h.getHitsplatType(), h.isMine(), h.isOthers(), h.getAmount(),
 				boatLocator.boatWorldPoint());
+			// Bounty AFK: any hit on the armed monster near the boat counts as the boat attacking (the crew's
+			// cannon fire may not be marked "mine"; phase 0's log will tell whether to narrow this).
+			if (event.getActor() instanceof NPC && nearBoat(event.getActor()))
+			{
+				String monster = afkMonster(liveMonsters, ((NPC) event.getActor()).getId());
+				if (monster != null)
+				{
+					bountyAfk.attacked(monster);
+				}
+			}
 		}
 	}
 

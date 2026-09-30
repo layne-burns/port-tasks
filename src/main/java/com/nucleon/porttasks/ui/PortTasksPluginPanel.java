@@ -100,6 +100,7 @@ public class PortTasksPluginPanel extends PluginPanel
 		private final JLabel chooseLink = new JLabel("Choose monsters");
 		private final JPanel monsterList = new JPanel();
 		private final JPanel huntResults = new JPanel();
+		private final FitLabel afkLabel = new FitLabel();
 		// Routing extension: which task rows are open ("c"/"b" + task dbrow), kept across rebuilds.
 		private final Set<String> openRows = new HashSet<>();
 		private final Map<Integer, BountyRow> bountyRows = new HashMap<>();
@@ -230,6 +231,10 @@ public class PortTasksPluginPanel extends PluginPanel
 			huntResults.setLayout(new BoxLayout(huntResults, BoxLayout.Y_AXIS));
 			huntResults.setAlignmentX(LEFT_ALIGNMENT);
 			huntView.add(huntTitle);
+			afkLabel.setFont(FontManager.getRunescapeSmallFont());
+			afkLabel.setAlignmentX(LEFT_ALIGNMENT);
+			afkLabel.setVisible(false);
+			huntView.add(afkLabel);
 			huntView.add(chooseLink);
 			huntView.add(monsterList);
 			huntView.add(huntResults);
@@ -450,6 +455,19 @@ public class PortTasksPluginPanel extends PluginPanel
 			}
 			statusView.revalidate();
 			statusView.repaint();
+		}
+
+		/** Routing extension: the Bounty AFK status line ("Great white shark · blacked out"), or null to hide it. */
+		public void showAfk(String status)
+		{
+			afkLabel.setVisible(status != null);
+			if (status != null)
+			{
+				afkLabel.setVersions("AFK: " + status, status);
+				afkLabel.setForeground(status.contains("corpse") ? Color.ORANGE : Color.CYAN);
+			}
+			huntView.revalidate();
+			huntView.repaint();
 		}
 
 		/** Shows or hides the monster boxes; built from the current setting each time it opens. Swing thread only. */

@@ -146,6 +146,17 @@ For monsters the player picks (**Bounty hunt** setting, or the side panel's "Cho
 - **Save safespot here** (side panel, while sailing for a monster) records the boat's tile as a safespot for it (profile key `routingSafespots`); **Forget saved** clears them.
 - A monster with any safespot (wiki or saved) is sailed to at its nearest safespot instead of its spawn areas. The target safespot's tiles are outlined on the sea (top-level world view; drawn only while one is the target).
 
+#### 2.5.3 Bounty AFK (added 2026-09-30)
+
+A blackout-while-planted mode for AFKing a bounty monster (usually on another monitor). Port Tasks is the base; Watchdog shows the blackout (it has no incoming-plugin-message trigger, so it matches chat lines); AnkiScape's Bounty mode runs cards.
+
+- **Arm:** examine the monster (setting **AFK monster**: Auto = whichever bounty monster is examined, or one monster). Examining it again turns it off.
+- **States:** OFF → WAITING (`[Bounty AFK] on: <monster>`; blackout) → corpse of that monster within 20 tiles (the dead NPC, `deadNpcId`) → DOWN (`<monster> down`; blackout off + flash: loot) → the boat hits one → WAITING (`<monster> fighting`; blackout).
+- **Attack** = any hitsplat on that monster within 20 tiles of the boat, so crew auto-fire counts (phase 0 logs whose hitsplats crew hits are, to narrow this if other players interfere).
+- **Off** (`off: <reason>`; blackout off + flash): that monster's held bounty has all its parts; docked (move mode 4); off the boat; examined again; or the boat moved (move mode 1–3) and didn't hit the monster within **AFK grace after moving** (default 20 s). The grace is checked each tick only while it runs.
+- **Anki:** PluginMessage `porttasks` / `bountyAfk` `{action, monster}`: "start" the first time it's armed with the boat parked (move mode 0), "stop" when it goes off.
+- **Phase 0 logging** (`[bountyafk]` in the client log, only on the boat): hitsplats on bounty monsters, overhead text, non-chat messages (the crew's fire-mode lines), NPC clicks, corpse spawn/despawn. Temporary.
+
 ## 3. Travel cost `d(u, v)`
 
 No available plugin does sea pathfinding. As of 2026-09-24, Shortest Path says in its code that it doesn't model sailing navigation. Duckblade's Sailing plugin draws hazard overlays but doesn't plan routes. Plan:
