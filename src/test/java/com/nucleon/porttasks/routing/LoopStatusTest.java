@@ -64,12 +64,21 @@ public class LoopStatusTest
 	public void seaOnlyBoardsAreLeftOutOfTheGather()
 	{
 		LoopPorts seaOnly = LoopPorts.parse("Deepfin");
-		LoopStatus s = LoopStatus.of(loop, seaOnly, memory, d -> true, 8);
+		LoopStatus s = LoopStatus.of(loop, seaOnly, Collections.emptySet(), memory, d -> true, 8);
 		assertEquals(LoopStatus.Phase.GATHER, s.phase);
 		assertEquals(PortLocation.RED_ROCK, s.nextUnseen());
 		seen.put(PortLocation.RED_ROCK, Set.of(3));
 		// Deepfin is still unseen, but it's reached by sea: the gather is done.
-		assertEquals(LoopStatus.Phase.SAIL, LoopStatus.of(loop, seaOnly, memory, d -> true, 8).phase);
+		assertEquals(LoopStatus.Phase.SAIL, LoopStatus.of(loop, seaOnly, Collections.emptySet(), memory, d -> true, 8).phase);
+	}
+
+	@Test
+	public void unusableBoardsAreLeftOut()
+	{
+		// Red Rock's board locked behind a quest: only Deepfin's is listed or gathered.
+		LoopStatus s = LoopStatus.of(loop, LoopPorts.NONE, Set.of(PortLocation.RED_ROCK), memory, d -> true, 8);
+		assertEquals(1, s.boards.size());
+		assertEquals(PortLocation.DEEPFIN_POINT, s.nextUnseen());
 	}
 
 	@Test

@@ -1020,7 +1020,7 @@ public class PortTasksPlugin extends Plugin
 		{
 			held.add(t.getData().getId());
 		}
-		LoopStatus status = LoopStatus.of(loop, LoopPorts.parse(config.routingLoopSeaOnly()), loopBoards, dbrow ->
+		LoopStatus status = LoopStatus.of(loop, LoopPorts.parse(config.routingLoopSeaOnly()), unusableBoards(), loopBoards, dbrow ->
 		{
 			CourierTaskData d = CourierTaskData.getByDbrow(dbrow);
 			return d != null && !held.contains(d.getId()) && loop.holds(d.getCargoLocation(), d.getDeliveryLocation())
@@ -1061,15 +1061,23 @@ public class PortTasksPlugin extends Plugin
 
 	/**
 	 * Ports behind a quest (wiki, 30 September 2026): Prifddinas needs Song of the Elves; Port Tyras needs
-	 * Regicide (docking also needs an adamant keel, not checked). Before it, neither the board nor a path works.
+	 * Regicide to dock (and an adamant keel, not checked).
 	 */
 	private static final Map<PortLocation, Quest> PORT_QUESTS = Map.of(
 		PortLocation.PRIFDDINAS, Quest.SONG_OF_THE_ELVES,
 		PortLocation.PORT_TYRAS, Quest.REGICIDE);
 
 	/**
-	 * Routing extension: ports the player can't use: above their Sailing level, or behind a quest they haven't
-	 * finished (PORT_QUESTS). Client thread only.
+	 * Notice boards behind a quest, beyond their port's: Port Tyras' board can't be used before Song of the Elves
+	 * even though the port can be docked at with Regicide (seen in game, 30 September 2026).
+	 */
+	private static final Map<PortLocation, Quest> BOARD_QUESTS = Map.of(
+		PortLocation.PRIFDDINAS, Quest.SONG_OF_THE_ELVES,
+		PortLocation.PORT_TYRAS, Quest.SONG_OF_THE_ELVES);
+
+	/**
+	 * Routing extension: ports the player can't sail to: above their Sailing level, or behind a quest they
+	 * haven't finished (PORT_QUESTS). Client thread only.
 	 */
 	private Set<PortLocation> unreachablePorts()
 	{
@@ -1082,8 +1090,23 @@ public class PortTasksPlugin extends Plugin
 				out.add(p);
 			}
 		}
+		addQuestLocked(out, PORT_QUESTS);
+		return out;
+	}
+
+	/** Routing extension: notice boards the player can't use: at unreachable ports, or behind BOARD_QUESTS. */
+	private Set<PortLocation> unusableBoards()
+	{
+		Set<PortLocation> out = unreachablePorts();
+		addQuestLocked(out, BOARD_QUESTS);
+		return out;
+	}
+
+	/** Adds the ports whose quest isn't known to be finished; a quest not read yet this login counts as unfinished. */
+	private void addQuestLocked(Set<PortLocation> out, Map<PortLocation, Quest> quests)
+	{
 		boolean unknown = false;
-		for (Map.Entry<PortLocation, Quest> e : PORT_QUESTS.entrySet())
+		for (Map.Entry<PortLocation, Quest> e : quests.entrySet())
 		{
 			Boolean done = questsDone.get(e.getValue());
 			unknown |= done == null;
@@ -1096,7 +1119,6 @@ public class PortTasksPlugin extends Plugin
 		{
 			refreshQuests();
 		}
-		return out;
 	}
 
 	/**
@@ -1118,7 +1140,9 @@ public class PortTasksPlugin extends Plugin
 				return;
 			}
 			boolean changed = false;
-			for (Quest q : PORT_QUESTS.values())
+			Set<Quest> quests = new HashSet<>(PORT_QUESTS.values());
+			quests.addAll(BOARD_QUESTS.values());
+			for (Quest q : quests)
 			{
 				boolean done = q.getState(client) == QuestState.FINISHED;
 				changed |= !Boolean.valueOf(done).equals(questsDone.put(q, done));
@@ -1152,7 +1176,7 @@ public class PortTasksPlugin extends Plugin
 			}
 		}
 		Player player = client.getLocalPlayer();
-		return BountyHunt.of(bountyWiki, monsters, unreachablePorts(), loopBoards, taskId ->
+		return BountyHunt.of(bountyWiki, monsters, unusableBoards(), loopBoards, taskId ->
 			{
 				BountyTaskData d = BountyTaskData.fromId(taskId);
 				return d == null ? -1 : d.getDbrow();
@@ -1769,11 +1793,14 @@ public class PortTasksPlugin extends Plugin
 			Set<PortLocation> usable = LoopSuggester.allPorts();
 			usable.removeAll(LoopPorts.parse(config.routingLoopExclude()).ports());
 			usable.removeAll(unreachablePorts());
+			// A port can be sailed to without its board being usable (Port Tyras before Song of the Elves): its
+			// tasks then aren't on offer, though it can still be a pickup or delivery.
+			Set<PortLocation> noBoard = unusableBoards();
 			List<LoopSuggester.Candidate> pool = new ArrayList<>();
 			for (CourierTaskData d : CourierTaskData.all())
 			{
 				Integer xp = xpLearner.xp(d.getId());
-				if (xp == null || level > 0 && d.getLevelRequired() > level || !BoardScorer.bagEnabled(config, BagSize.forXp(xp)))
+				if (xp == null || noBoard.contains(d.getNoticeBoard()) || level > 0 && d.getLevelRequired() > level || !BoardScorer.bagEnabled(config, BagSize.forXp(xp)))
 				{
 					continue;
 				}

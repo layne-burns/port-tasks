@@ -75,11 +75,15 @@ public final class LoopStatus
 	 */
 	public static LoopStatus of(LoopPorts loop, Memory memory, IntPredicate worthwhile, int tasksToReset)
 	{
-		return of(loop, LoopPorts.NONE, memory, worthwhile, tasksToReset);
+		return of(loop, LoopPorts.NONE, Collections.emptySet(), memory, worthwhile, tasksToReset);
 	}
 
-	/** @param seaOnly loop ports whose boards are left out of the gather */
-	public static LoopStatus of(LoopPorts loop, LoopPorts seaOnly, Memory memory, IntPredicate worthwhile, int tasksToReset)
+	/**
+	 * @param seaOnly   loop ports whose boards are left out of the gather
+	 * @param noBoard   ports whose board the player can't use (a quest): treated as having none
+	 */
+	public static LoopStatus of(LoopPorts loop, LoopPorts seaOnly, Set<PortLocation> noBoard, Memory memory, IntPredicate worthwhile,
+		int tasksToReset)
 	{
 		if (!loop.active())
 		{
@@ -91,9 +95,9 @@ public final class LoopStatus
 		int total = 0;
 		for (PortLocation p : loop.ports())
 		{
-			if (p.getNoticeboardObject() == -1)
+			if (p.getNoticeboardObject() == -1 || noBoard.contains(p))
 			{
-				continue; // no notice board here: nothing to gather
+				continue; // no notice board here (or none the player can use): nothing to gather
 			}
 			boolean seen = memory.seen(p);
 			int n = 0;

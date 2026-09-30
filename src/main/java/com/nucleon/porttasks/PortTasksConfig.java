@@ -111,7 +111,7 @@ public interface PortTasksConfig extends Config
 		name = "Not in loop suggestions",
 		description = "Ports the loop suggestions should leave out, separated by commas (e.g. ones you can't reach yet)."
 			+ " Ports above your Sailing level, and ports behind a quest you haven't finished (Prifddinas: Song of the Elves;"
-			+ " Port Tyras: Regicide), are left out anyway",
+			+ " Port Tyras: Regicide, and Song of the Elves for its board), are left out anyway",
 		section = planningSection,
 		position = 5
 	)
