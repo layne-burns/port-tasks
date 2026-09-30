@@ -40,6 +40,7 @@ import com.nucleon.porttasks.routing.LoopBoards;
 import com.nucleon.porttasks.routing.LoopPorts;
 import com.nucleon.porttasks.routing.LoopStatus;
 import com.nucleon.porttasks.routing.LoopSuggester;
+import com.nucleon.porttasks.routing.NoticeBoardTiles;
 import com.nucleon.porttasks.routing.RewardValuer;
 import com.nucleon.porttasks.routing.RoutingDiagnostics;
 import com.nucleon.porttasks.routing.RoutingService;
@@ -1009,8 +1010,9 @@ public class PortTasksPlugin extends Plugin
 		loopStatus = status;
 
 		PortLocation next = status.phase == LoopStatus.Phase.GATHER && !boatLocator.onBoat() ? status.nextUnseen() : null;
-		WorldPoint tile = next == null ? null : loopBoards.tile(next);
-		routingService.setLandTarget(next == null ? null : tile != null ? tile : next.getNavigationLocation());
+		// A land tile only: the port's navigation tile is at sea, and a land path to it can't be found.
+		WorldPoint tile = next == null ? null : loopBoards.tile(next) != null ? loopBoards.tile(next) : NoticeBoardTiles.of(next);
+		routingService.setLandTarget(tile);
 		if (phaseChanged)
 		{
 			log.debug("[loop] {}", status.phase);
