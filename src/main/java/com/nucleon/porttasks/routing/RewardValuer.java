@@ -82,6 +82,17 @@ public final class RewardValuer
 			+ (1 - BagSize.COIN_BAG_CHANCE) * expectedRewardBag(size, destination);
 	}
 
+	/**
+	 * Expected value of a bounty task's bag of this size, at high-alchemy prices: coin bag 4/5, reward bag 1/5
+	 * (assumed the same split as couriers). Bounties are claimed at any port master and the wiki doesn't say
+	 * whose port-themed items the reward bag holds, so only the drops every port's bag shares are counted.
+	 */
+	public double expectedBountyValue(BagSize size)
+	{
+		return BagSize.COIN_BAG_CHANCE * size.expectedCoins()
+			+ (1 - BagSize.COIN_BAG_CHANCE) * expectedRewardBag(size, "");
+	}
+
 	private double dropValue(CourierWikiData.Drop d)
 	{
 		Integer own = wanted.valueOf(d.name);

@@ -689,6 +689,20 @@ public interface PortTasksConfig extends Config
 		return Npcs.TASK;
 	}
 
+	@ConfigItem(
+		keyName = "routingBountyHunt",
+		name = "Bounty hunt",
+		description = "Monsters whose bounty tasks you're after, separated by commas (e.g. Great white shark). The side panel"
+			+ " lists where each part's task is always and may be offered, and guides you to the next board to check."
+			+ " Also set from the side panel",
+		section = bountyTasks,
+		position = 3
+	)
+	default String routingBountyHunt()
+	{
+		return "";
+	}
+
 	// ---------------------------------------------------------------- Board reset tracker
 
 	@ConfigSection(

@@ -33,6 +33,8 @@ import com.nucleon.porttasks.routing.BagCounter;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
 import com.nucleon.porttasks.routing.BoatLocator;
+import com.nucleon.porttasks.routing.BountyHunt;
+import com.nucleon.porttasks.routing.BountyWikiData;
 import com.nucleon.porttasks.routing.CourierWikiData;
 import com.nucleon.porttasks.routing.DepositGuard;
 import com.nucleon.porttasks.routing.DockGuard;
@@ -178,6 +180,10 @@ public class PortTasksPlugin extends Plugin
 	// Routing extension: loop mode's memory of the loop boards, and where loop mode stands (SPEC-routing.md §2.4.2).
 	private LoopBoards loopBoards;
 	private volatile LoopStatus loopStatus = LoopStatus.OFF;
+	// Routing extension: the bounty hunt (SPEC-routing.md §2.5).
+	private BountyWikiData bountyWiki;
+	private RewardValuer rewardValuer;
+	private volatile BountyHunt bountyHunt = BountyHunt.NONE;
 	RoutingService routingService;
 	BagCounter bagCounter;
 	private DepositGuard depositGuard;
@@ -427,6 +433,8 @@ public class PortTasksPlugin extends Plugin
 		dockGuard = new DockGuard(client);
 		wantedItems.parse(config.routingWantedItems());
 		RewardValuer rewardValuer = new RewardValuer(courierWikiData, itemManager, wantedItems);
+		this.rewardValuer = rewardValuer;
+		bountyWiki = BountyWikiData.load(gson);
 		boardScorer = new BoardScorer(routingService.graph(), courierWikiData, xpLearner, rewardValuer, wantedItems, config);
 		updateBestXpPerTile();
 		clientThread.invoke(() ->
@@ -1015,7 +1023,14 @@ public class PortTasksPlugin extends Plugin
 		boolean changed = !status.key().equals(loopStatus.key());
 		loopStatus = status;
 
-		PortLocation next = status.phase == LoopStatus.Phase.GATHER && !boatLocator.onBoat() ? status.nextUnseen() : null;
+		BountyHunt hunt = huntStatus();
+		boolean huntChanged = !hunt.key().equals(bountyHunt.key());
+		bountyHunt = hunt;
+
+		// Off the boat, Shortest Path goes to the loop's next unseen board while gathering, else to the hunt's next
+		// board (the two are rarely wanted at once; the gather wins).
+		PortLocation next = boatLocator.onBoat() ? null
+			: status.phase == LoopStatus.Phase.GATHER ? status.nextUnseen() : hunt.next;
 		// A land tile only: the port's navigation tile is at sea, and a land path to it can't be found.
 		WorldPoint tile = next == null ? null : loopBoards.tile(next) != null ? loopBoards.tile(next) : NoticeBoardTiles.of(next);
 		routingService.setLandTarget(tile);
@@ -1031,6 +1046,70 @@ public class PortTasksPlugin extends Plugin
 		{
 			SwingUtilities.invokeLater(() -> pluginPanel.showLoopStatus(status));
 		}
+		if (huntChanged)
+		{
+			SwingUtilities.invokeLater(() -> pluginPanel.showBountyHunt(hunt));
+		}
+	}
+
+	/**
+	 * Routing extension: the bounty hunt for the picked monsters (SPEC-routing.md §2.5), from the boards
+	 * remembered this reset cycle and the bounty tasks held.
+	 */
+	private BountyHunt huntStatus()
+	{
+		List<String> monsters = bountyWiki.parseMonsters(config.routingBountyHunt());
+		if (monsters.isEmpty())
+		{
+			return BountyHunt.NONE;
+		}
+		Set<String> heldItems = new HashSet<>();
+		for (BountyTask t : bountyTasks)
+		{
+			BountyWikiData.Task w = bountyWiki.task(t.getData().getId());
+			if (w != null)
+			{
+				heldItems.add(w.item);
+			}
+		}
+		Player player = client.getLocalPlayer();
+		return BountyHunt.of(bountyWiki, monsters, loopBoards, taskId ->
+			{
+				BountyTaskData d = BountyTaskData.fromId(taskId);
+				return d == null ? -1 : d.getDbrow();
+			}, heldItems, sailingLevel, player == null || boatLocator.onBoat() ? null : player.getWorldLocation(),
+			t -> t.bag == null ? 0 : rewardValuer.expectedBountyValue(t.bag));
+	}
+
+	/** Routing extension: true if this offered task is a bounty for a part the hunt is after (and not held). */
+	public boolean hunted(int dbrow)
+	{
+		BountyTaskData d = BountyTaskData.getByDbrow(dbrow);
+		BountyWikiData.Task w = d == null ? null : bountyWiki.task(d.getId());
+		if (w == null)
+		{
+			return false;
+		}
+		for (BountyHunt.Part p : bountyHunt.parts)
+		{
+			if (!p.held && p.item.equals(w.item))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Routing extension: the side panel's monster boxes write the hunt setting through here. */
+	public void setHunted(List<String> monsters)
+	{
+		configManager.setConfiguration(CONFIG_GROUP, "routingBountyHunt", String.join(", ", monsters));
+	}
+
+	/** Routing extension: every monster with a bounty, for the side panel. */
+	public List<String> bountyMonsters()
+	{
+		return bountyWiki.monsters();
 	}
 
 	/** Port tasks still to complete before the boards reset (the reset tracker's count, today's only). */
@@ -1391,15 +1470,17 @@ public class PortTasksPlugin extends Plugin
 	 */
 	private void rememberBoard()
 	{
+		// Courier and bounty offers both: loop mode reads the courier ones, the bounty hunt the bounty ones.
 		PortLocation board = null;
-		List<Integer> courier = new ArrayList<>();
+		List<Integer> tasks = new ArrayList<>();
 		for (Integer dbrow : offeredTasks.keySet())
 		{
 			CourierTaskData d = CourierTaskData.getByDbrow(dbrow);
-			if (d != null)
+			BountyTaskData b = d == null ? BountyTaskData.getByDbrow(dbrow) : null;
+			if (d != null || b != null)
 			{
-				courier.add(dbrow);
-				board = d.getNoticeBoard();
+				tasks.add(dbrow);
+				board = d != null ? d.getNoticeBoard() : b.getBountyLocation();
 			}
 		}
 		if (board == null)
@@ -1408,7 +1489,7 @@ public class PortTasksPlugin extends Plugin
 		}
 		Player player = client.getLocalPlayer();
 		boolean seenBefore = loopBoards.seen(board);
-		Set<Integer> added = loopBoards.opened(board, courier, player == null ? null : player.getWorldLocation());
+		Set<Integer> added = loopBoards.opened(board, tasks, player == null ? null : player.getWorldLocation());
 		if (seenBefore && !added.isEmpty())
 		{
 			log.info("[loop] {} board has {} new offers without a reset ({} tasks to reset): {}", board.getName(),

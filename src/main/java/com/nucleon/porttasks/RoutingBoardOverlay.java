@@ -71,8 +71,18 @@ class RoutingBoardOverlay extends Overlay
 			BoardScorer.Score s = plugin.boardScore(e.getKey());
 			Widget w = e.getValue().getTaskWidget();
 			Rectangle r = w == null ? null : w.getBounds();
-			if (s == null || r == null || w.isHidden())
+			if (r == null || w.isHidden())
 			{
+				continue;
+			}
+			if (s == null)
+			{
+				// Not a scored courier task: a bounty the hunt is after gets outlined.
+				if (badges && plugin.hunted(e.getKey()))
+				{
+					outline(graphics, r, config.routingWantedColor(), 0);
+					OverlayUtil.renderTextLocation(graphics, new Point(r.x + 3, r.y + 12), "Hunt", config.routingWantedColor());
+				}
 				continue;
 			}
 			if (tint)

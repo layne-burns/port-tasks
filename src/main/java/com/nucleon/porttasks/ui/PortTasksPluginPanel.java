@@ -39,6 +39,7 @@ import com.nucleon.porttasks.Task;
 import com.nucleon.porttasks.enums.PortLocation;
 import com.nucleon.porttasks.routing.BagSize;
 import com.nucleon.porttasks.routing.BoardScorer;
+import com.nucleon.porttasks.routing.BountyHunt;
 import com.nucleon.porttasks.routing.LoopPorts;
 import com.nucleon.porttasks.routing.LoopStatus;
 import com.nucleon.porttasks.routing.LoopSuggester;
@@ -93,6 +94,11 @@ public class PortTasksPluginPanel extends PluginPanel
 		private final JLabel suggestLink = new JLabel("Suggest loops");
 		private final JPanel suggestionsView = new JPanel();
 		private final JPanel statusView = new JPanel();
+		// Routing extension: the bounty hunt.
+		private final JPanel huntView = new JPanel();
+		private final JLabel chooseLink = new JLabel("Choose monsters");
+		private final JPanel monsterList = new JPanel();
+		private final JPanel huntResults = new JPanel();
 		// Routing extension: which task rows are open ("c"/"b" + task dbrow), kept across rebuilds.
 		private final Set<String> openRows = new HashSet<>();
 		private final Map<Integer, BountyRow> bountyRows = new HashMap<>();
@@ -200,6 +206,33 @@ public class PortTasksPluginPanel extends PluginPanel
 			boardView.setLayout(new BoxLayout(boardView, BoxLayout.Y_AXIS));
 			boardView.setBackground(ColorScheme.DARK_GRAY_COLOR);
 			centerPanel.add(boardView, BorderLayout.CENTER);
+
+			// Bounty hunt (SPEC-routing.md §2.5): monsters picked from a list shown on request, then where to look.
+			huntView.setLayout(new BoxLayout(huntView, BoxLayout.Y_AXIS));
+			huntView.setBackground(ColorScheme.DARK_GRAY_COLOR);
+			huntView.setBorder(new EmptyBorder(8, 0, 0, 0));
+			JLabel huntTitle = smallLabel("Bounty hunt", Color.WHITE);
+			chooseLink.setFont(FontManager.getRunescapeSmallFont());
+			chooseLink.setForeground(config.routingLegColor());
+			chooseLink.setAlignmentX(LEFT_ALIGNMENT);
+			chooseLink.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mouseClicked(MouseEvent e)
+				{
+					toggleMonsterList();
+				}
+			});
+			monsterList.setLayout(new BoxLayout(monsterList, BoxLayout.Y_AXIS));
+			monsterList.setAlignmentX(LEFT_ALIGNMENT);
+			monsterList.setVisible(false);
+			huntResults.setLayout(new BoxLayout(huntResults, BoxLayout.Y_AXIS));
+			huntResults.setAlignmentX(LEFT_ALIGNMENT);
+			huntView.add(huntTitle);
+			huntView.add(chooseLink);
+			huntView.add(monsterList);
+			huntView.add(huntResults);
+			centerPanel.add(huntView, BorderLayout.SOUTH);
 
 			// setup panels border layout
 			add(northPanel, BorderLayout.NORTH);
@@ -416,6 +449,118 @@ public class PortTasksPluginPanel extends PluginPanel
 			}
 			statusView.revalidate();
 			statusView.repaint();
+		}
+
+		/** Shows or hides the monster boxes; built from the current setting each time it opens. Swing thread only. */
+		private void toggleMonsterList()
+		{
+			boolean open = !monsterList.isVisible();
+			monsterList.removeAll();
+			if (open)
+			{
+				Set<String> picked = new HashSet<>();
+				for (String s : config.routingBountyHunt().split(","))
+				{
+					picked.add(s.trim().toLowerCase());
+				}
+				List<JCheckBox> boxes = new ArrayList<>();
+				for (String monster : plugin.bountyMonsters())
+				{
+					JCheckBox box = new JCheckBox(monster, picked.contains(monster.toLowerCase()));
+					box.setFont(FontManager.getRunescapeSmallFont());
+					box.setFocusable(false);
+					box.setAlignmentX(LEFT_ALIGNMENT);
+					boxes.add(box);
+					box.addActionListener(e ->
+					{
+						List<String> chosen = new ArrayList<>();
+						for (JCheckBox b : boxes)
+						{
+							if (b.isSelected())
+							{
+								chosen.add(b.getText());
+							}
+						}
+						plugin.setHunted(chosen);
+					});
+					monsterList.add(box);
+				}
+			}
+			monsterList.setVisible(open);
+			chooseLink.setText(open ? "Done choosing" : "Choose monsters");
+			huntView.revalidate();
+			huntView.repaint();
+		}
+
+		/**
+		 * Routing extension: the bounty hunt's parts and where to look (SPEC-routing.md §2.5). Per part, one line per
+		 * board in search order: its state (offered now, always offered, to check, not this cycle), then the
+		 * task's quantity, bag size and expected bag value at high-alchemy prices. Swing thread only.
+		 */
+		public void showBountyHunt(BountyHunt hunt)
+		{
+			huntResults.removeAll();
+			if (hunt.next != null)
+			{
+				huntResults.add(smallLabel("Next: " + PortNames.full(hunt.next), config.routingLegColor()));
+			}
+			for (BountyHunt.Part p : hunt.parts)
+			{
+				JLabel part = smallLabel(p.item + (p.held ? " (held)" : ""), p.held ? Color.GRAY : Color.WHITE);
+				part.setBorder(new EmptyBorder(4, 0, 1, 0));
+				huntResults.add(part);
+				if (p.held)
+				{
+					continue;
+				}
+				for (BountyHunt.Board b : p.boards)
+				{
+					huntResults.add(huntLine(b));
+				}
+			}
+			huntResults.revalidate();
+			huntResults.repaint();
+		}
+
+		private static JPanel huntLine(BountyHunt.Board b)
+		{
+			String state;
+			Color colour;
+			switch (b.state)
+			{
+				case OFFERED:
+					state = "offered";
+					colour = Color.GREEN;
+					break;
+				case ALWAYS:
+					state = "always";
+					colour = Color.CYAN;
+					break;
+				case UNCHECKED:
+					state = "check";
+					colour = Color.YELLOW;
+					break;
+				default:
+					state = "not now";
+					colour = Color.GRAY;
+					break;
+			}
+			JPanel line = new JPanel(new BorderLayout(4, 0));
+			line.setAlignmentX(LEFT_ALIGNMENT);
+			FitLabel where = new FitLabel();
+			where.setFont(FontManager.getRunescapeSmallFont());
+			where.setVersions("  " + PortNames.full(b.port) + " · " + state, "  " + PortNames.abbreviation(b.port) + " · " + state);
+			where.setForeground(colour);
+			JLabel numbers = smallLabel(b.qty + " · " + (b.bag == null ? "?" : b.bag.wikiName().substring(0, 1))
+				+ " · " + String.format("%.1fk", b.value / 1000), Color.GRAY);
+			line.setToolTipText(String.format("<html>%s%s<br>%d parts, level %d<br>%s bag, about %,.0f gp expected (high alch)"
+					+ "<br>Offered now: seen on the board this reset cycle. Always: the board's guaranteed bounty."
+					+ "<br>Check: may be on the board. Not now: the board didn't have it this cycle</html>",
+				b.port.getName(), b.guaranteed ? " (always offers it)" : "", b.qty, b.level,
+				b.bag == null ? "Unknown" : b.bag.wikiName(), b.value));
+			line.add(where, BorderLayout.CENTER);
+			line.add(numbers, BorderLayout.EAST);
+			return line;
 		}
 
 		private static JLabel smallLabel(String text, Color colour)
