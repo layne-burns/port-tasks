@@ -408,9 +408,9 @@ public class PortTasksPluginPanel extends PluginPanel
 					FitLabel line = new FitLabel();
 					line.setFont(FontManager.getRunescapeSmallFont());
 					line.setAlignmentX(LEFT_ALIGNMENT);
-					String what = !b.seen ? "not seen" : b.worthwhile == 0 ? "nothing" : b.worthwhile + " to take";
+					String what = !b.seen ? (b.seaOnly ? "by sea" : "not seen") : b.worthwhile == 0 ? "nothing" : b.worthwhile + " to take";
 					line.setVersions("  " + PortNames.full(b.port) + ": " + what, "  " + PortNames.abbreviation(b.port) + ": " + what);
-					line.setForeground(!b.seen ? Color.YELLOW : b.worthwhile > 0 ? Color.WHITE : Color.GRAY);
+					line.setForeground(!b.seen ? (b.seaOnly ? Color.GRAY : Color.YELLOW) : b.worthwhile > 0 ? Color.WHITE : Color.GRAY);
 					statusView.add(line);
 				}
 			}

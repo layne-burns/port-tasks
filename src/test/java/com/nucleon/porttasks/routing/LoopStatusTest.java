@@ -12,6 +12,7 @@ import org.junit.Test;
 public class LoopStatusTest
 {
 	private final Map<PortLocation, Set<Integer>> seen = new EnumMap<>(PortLocation.class);
+	private boolean boarded;
 	private final LoopStatus.Memory memory = new LoopStatus.Memory()
 	{
 		@Override
@@ -24,6 +25,12 @@ public class LoopStatusTest
 		public Set<Integer> offers(PortLocation board)
 		{
 			return seen.getOrDefault(board, Collections.emptySet());
+		}
+
+		@Override
+		public boolean gatherDone()
+		{
+			return boarded;
 		}
 	};
 	// Deepfin Point and Red Rock both have notice boards.
@@ -51,5 +58,29 @@ public class LoopStatusTest
 		s = LoopStatus.of(loop, memory, d -> false, 5);
 		assertEquals(LoopStatus.Phase.DRY, s.phase);
 		assertEquals(5, s.tasksToReset);
+	}
+
+	@Test
+	public void seaOnlyBoardsAreLeftOutOfTheGather()
+	{
+		LoopPorts seaOnly = LoopPorts.parse("Deepfin");
+		LoopStatus s = LoopStatus.of(loop, seaOnly, memory, d -> true, 8);
+		assertEquals(LoopStatus.Phase.GATHER, s.phase);
+		assertEquals(PortLocation.RED_ROCK, s.nextUnseen());
+		seen.put(PortLocation.RED_ROCK, Set.of(3));
+		// Deepfin is still unseen, but it's reached by sea: the gather is done.
+		assertEquals(LoopStatus.Phase.SAIL, LoopStatus.of(loop, seaOnly, memory, d -> true, 8).phase);
+	}
+
+	@Test
+	public void boardingEndsTheGather()
+	{
+		seen.put(PortLocation.DEEPFIN_POINT, Set.of(1));
+		assertEquals(LoopStatus.Phase.GATHER, LoopStatus.of(loop, memory, d -> true, 8).phase);
+		boarded = true;
+		LoopStatus s = LoopStatus.of(loop, memory, d -> true, 8);
+		assertEquals(LoopStatus.Phase.SAIL, s.phase);
+		// Red Rock stays unseen (a dock there still gets the reminder), but nothing sends the player to it.
+		assertEquals(false, s.board(PortLocation.RED_ROCK).seen);
 	}
 }

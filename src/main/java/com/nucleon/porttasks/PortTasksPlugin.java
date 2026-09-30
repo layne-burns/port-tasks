@@ -642,7 +642,13 @@ public class PortTasksPlugin extends Plugin
 		}
 		else if (varbitId == VarbitID.SAILING_SIDEPANEL_BOAT_MOVE_MODE || varbitId == VarbitID.SAILING_PLAYER_IS_ON_PLAYER_BOAT)
 		{
-			// Boarding or leaving the boat also switches loop mode's guidance between land and sea.
+			// Boarding the boat ends loop mode's gather for this reset cycle, even with boards unseen: from then
+			// on it's deliveries (SPEC-routing.md §2.4.2).
+			if (varbitId == VarbitID.SAILING_PLAYER_IS_ON_PLAYER_BOAT && event.getValue() == 1
+				&& loopStatus.phase == LoopStatus.Phase.GATHER)
+			{
+				loopBoards.endGather();
+			}
 			rebuildView();
 		}
 		else if (RoutingDiagnostics.BOAT_VARBITS.containsKey(varbitId))
@@ -999,7 +1005,7 @@ public class PortTasksPlugin extends Plugin
 		{
 			held.add(t.getData().getId());
 		}
-		LoopStatus status = LoopStatus.of(loop, loopBoards, dbrow ->
+		LoopStatus status = LoopStatus.of(loop, LoopPorts.parse(config.routingLoopSeaOnly()), loopBoards, dbrow ->
 		{
 			CourierTaskData d = CourierTaskData.getByDbrow(dbrow);
 			return d != null && !held.contains(d.getId()) && loop.holds(d.getCargoLocation(), d.getDeliveryLocation())

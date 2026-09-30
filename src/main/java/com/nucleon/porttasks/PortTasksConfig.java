@@ -94,12 +94,25 @@ public interface PortTasksConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "routingLoopSeaOnly",
+		name = "Gather by sea only",
+		description = "Loop ports whose board you don't teleport to while gathering (e.g. Lunar Isle), separated by commas."
+			+ " They are left out of the gather; you look at them when the route docks there",
+		section = planningSection,
+		position = 4
+	)
+	default String routingLoopSeaOnly()
+	{
+		return "";
+	}
+
+	@ConfigItem(
 		keyName = "routingLoopExclude",
 		name = "Not in loop suggestions",
 		description = "Ports the loop suggestions should leave out, separated by commas (e.g. ones you can't reach yet)."
 			+ " Ports above your Sailing level, and Prifddinas before Song of the Elves, are left out anyway",
 		section = planningSection,
-		position = 4
+		position = 5
 	)
 	default String routingLoopExclude()
 	{

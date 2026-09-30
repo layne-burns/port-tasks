@@ -117,7 +117,7 @@ A density is not a rate: a board shows only part of its pool at a time, so the r
 
 | Phase | When | What the plugin does |
 |---|---|---|
-| **Gather** | a loop board hasn't been seen this cycle | side panel lists each board as not seen / n to take; the next-stop panel says "Look at <port>". Off the boat, Shortest Path is pointed at the first unseen board (its remembered tile, else the port's dock tile) with the player's own settings, so teleports are used. On the boat, the sailing leg shows as usual |
+| **Gather** | a loop board hasn't been seen this cycle, and the player hasn't boarded the boat since the reset (boarding ends the gather for the cycle, straight into Sail). Boards in **Gather by sea only** (e.g. Lunar Isle, awkward to teleport to) are left out: never a guidance target, not needed to finish; they're looked at when the route docks there | side panel lists each board as not seen / n to take; the next-stop panel says "Look at <port>". Off the boat, Shortest Path is pointed at the first unseen board (its remembered tile, else the port's dock tile) with the player's own settings, so teleports are used. On the boat, the sailing leg shows as usual |
 | **Sail** | all seen, some worthwhile offers left | normal routing. Docked at a loop port with a free slot, the text above the player says how many loop tasks its board still has |
 | **Dry** | all seen, none worthwhile | teleporting round again wouldn't help: nothing new comes before the reset. The board list switches to **fillers**: every task of any size, in or out of the loop, ranked by added cost (least first), with no best set and no dimming. It shows the tasks left until the reset. After the reset, the memory is empty and it's Gather again |
 

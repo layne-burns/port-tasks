@@ -144,15 +144,21 @@ final class PortView
 		switch (loop.phase)
 		{
 			case GATHER:
+				// Sea-only boards aren't part of the gather, so they aren't counted or listed.
 				int seen = 0;
+				int gathered = 0;
 				for (LoopStatus.Board b : loop.boards)
 				{
-					seen += b.seen ? 1 : 0;
+					if (!b.seaOnly)
+					{
+						gathered++;
+						seen += b.seen ? 1 : 0;
+					}
 				}
-				lines.add(new Line("Loop: gather, " + seen + "/" + loop.boards.size() + " boards seen", REMINDER));
+				lines.add(new Line("Loop: gather, " + seen + "/" + gathered + " boards seen", REMINDER));
 				for (LoopStatus.Board b : loop.boards)
 				{
-					if (!b.seen)
+					if (!b.seen && !b.seaOnly)
 					{
 						lines.add(new Line("  Look at " + b.port.getName(), Color.LIGHT_GRAY));
 					}

@@ -36,6 +36,8 @@ public final class LoopBoards implements LoopStatus.Memory
 		Map<String, Set<Integer>> offers;
 		/** Port name -> {x, y, plane} where the player stood at its board. */
 		Map<String, int[]> tiles;
+		/** The player boarded the boat this cycle, ending the gather. */
+		boolean gatherDone;
 	}
 
 	private final ConfigManager configManager;
@@ -44,6 +46,7 @@ public final class LoopBoards implements LoopStatus.Memory
 	private LocalDate date;
 	private final Map<PortLocation, Set<Integer>> offers = new EnumMap<>(PortLocation.class);
 	private final Map<PortLocation, WorldPoint> tiles = new EnumMap<>(PortLocation.class);
+	private boolean gatherDone;
 
 	public LoopBoards(ConfigManager configManager, String group, Gson gson)
 	{
@@ -65,6 +68,7 @@ public final class LoopBoards implements LoopStatus.Memory
 		{
 			Stored s = gson.fromJson(json, Stored.class);
 			date = s.date == null ? today() : LocalDate.parse(s.date);
+			gatherDone = s.gatherDone;
 			if (s.offers != null)
 			{
 				s.offers.forEach((name, rows) -> put(offers, name, new LinkedHashSet<>(rows)));
@@ -103,6 +107,7 @@ public final class LoopBoards implements LoopStatus.Memory
 	{
 		Stored s = new Stored();
 		s.date = date.toString();
+		s.gatherDone = gatherDone;
 		s.offers = new HashMap<>();
 		offers.forEach((p, rows) -> s.offers.put(p.getName(), rows));
 		s.tiles = new HashMap<>();
@@ -132,8 +137,30 @@ public final class LoopBoards implements LoopStatus.Memory
 	{
 		log.debug("[loop] boards reset ({}): forgetting {} boards", why, offers.size());
 		offers.clear();
+		gatherDone = false;
 		date = today();
 		save();
+	}
+
+	/**
+	 * The player boarded the boat: the gather is over for this reset cycle, whether or not every loop board
+	 * was seen, and the next gather starts after the reset.
+	 */
+	public void endGather()
+	{
+		checkDay();
+		if (!gatherDone)
+		{
+			gatherDone = true;
+			save();
+			log.debug("[loop] boarded: gather over until the boards reset");
+		}
+	}
+
+	@Override
+	public boolean gatherDone()
+	{
+		return gatherDone;
 	}
 
 	/**
