@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.IntUnaryOperator;
 import java.util.function.ToDoubleFunction;
 import net.runelite.api.coords.WorldPoint;
@@ -83,13 +84,15 @@ public final class BountyHunt
 	}
 
 	/**
+	 * @param unreachable  ports the player can't use (e.g. Prifddinas before Song of the Elves): their boards are left out
 	 * @param dbrowOf      task id -> the game's dbrow for it (what boards are remembered by), or -1 if unknown
 	 * @param heldItems    body parts the player holds a bounty task for
 	 * @param from         where distances are measured from (the player), or null to keep name order
 	 * @param value        a task's expected bag value
 	 */
-	public static BountyHunt of(BountyWikiData data, List<String> monsters, LoopStatus.Memory memory, IntUnaryOperator dbrowOf,
-		Collection<String> heldItems, int sailingLevel, WorldPoint from, ToDoubleFunction<BountyWikiData.Task> value)
+	public static BountyHunt of(BountyWikiData data, List<String> monsters, Set<PortLocation> unreachable, LoopStatus.Memory memory,
+		IntUnaryOperator dbrowOf, Collection<String> heldItems, int sailingLevel, WorldPoint from,
+		ToDoubleFunction<BountyWikiData.Task> value)
 	{
 		List<Part> parts = new ArrayList<>();
 		PortLocation next = null;
@@ -100,7 +103,7 @@ public final class BountyHunt
 				List<Board> boards = new ArrayList<>();
 				for (BountyWikiData.Task t : p.tasks)
 				{
-					if (sailingLevel > 0 && t.level > sailingLevel)
+					if (sailingLevel > 0 && t.level > sailingLevel || unreachable.contains(t.board))
 					{
 						continue;
 					}

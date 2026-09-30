@@ -184,6 +184,9 @@ public class PortTasksPlugin extends Plugin
 	private BountyWikiData bountyWiki;
 	private RewardValuer rewardValuer;
 	private volatile BountyHunt bountyHunt = BountyHunt.NONE;
+	// Whether each port-gating quest is finished; absent until read this login.
+	private final Map<Quest, Boolean> questsDone = new HashMap<>();
+	private boolean questCheckPending;
 	RoutingService routingService;
 	BagCounter bagCounter;
 	private DepositGuard depositGuard;
@@ -744,6 +747,10 @@ public class PortTasksPlugin extends Plugin
 			// Shortest Path may drop its path here; make the next plan re-send the leg.
 			routingService.resetShortestPath();
 		}
+		if (state == GameState.LOGIN_SCREEN)
+		{
+			questsDone.clear(); // another account may log in
+		}
 		switch (state)
 		{
 			case HOPPING:
@@ -1053,6 +1060,78 @@ public class PortTasksPlugin extends Plugin
 	}
 
 	/**
+	 * Ports behind a quest (wiki, 30 September 2026): Prifddinas needs Song of the Elves; Port Tyras needs
+	 * Regicide (docking also needs an adamant keel, not checked). Before it, neither the board nor a path works.
+	 */
+	private static final Map<PortLocation, Quest> PORT_QUESTS = Map.of(
+		PortLocation.PRIFDDINAS, Quest.SONG_OF_THE_ELVES,
+		PortLocation.PORT_TYRAS, Quest.REGICIDE);
+
+	/**
+	 * Routing extension: ports the player can't use: above their Sailing level, or behind a quest they haven't
+	 * finished (PORT_QUESTS). Client thread only.
+	 */
+	private Set<PortLocation> unreachablePorts()
+	{
+		Set<PortLocation> out = new HashSet<>();
+		int level = sailingLevel;
+		for (PortLocation p : PortLocation.values())
+		{
+			if (level > 0 && p.getSailingLevelRequired() != null && p.getSailingLevelRequired() > level)
+			{
+				out.add(p);
+			}
+		}
+		boolean unknown = false;
+		for (Map.Entry<PortLocation, Quest> e : PORT_QUESTS.entrySet())
+		{
+			Boolean done = questsDone.get(e.getValue());
+			unknown |= done == null;
+			if (!Boolean.TRUE.equals(done))
+			{
+				out.add(e.getKey());
+			}
+		}
+		if (unknown)
+		{
+			refreshQuests();
+		}
+		return out;
+	}
+
+	/**
+	 * Reads the gating quests' states once, later on the client thread: it runs a game script, which can't be
+	 * done from inside every event handler. Until the answer is in, their ports count as unreachable.
+	 */
+	private void refreshQuests()
+	{
+		if (questCheckPending || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		questCheckPending = true;
+		clientThread.invokeLater(() ->
+		{
+			questCheckPending = false;
+			if (client.getGameState() != GameState.LOGGED_IN)
+			{
+				return;
+			}
+			boolean changed = false;
+			for (Quest q : PORT_QUESTS.values())
+			{
+				boolean done = q.getState(client) == QuestState.FINISHED;
+				changed |= !Boolean.valueOf(done).equals(questsDone.put(q, done));
+			}
+			if (changed)
+			{
+				log.debug("[routing] port quests finished: {}", questsDone);
+				rebuildView();
+			}
+		});
+	}
+
+	/**
 	 * Routing extension: the bounty hunt for the picked monsters (SPEC-routing.md §2.5), from the boards
 	 * remembered this reset cycle and the bounty tasks held.
 	 */
@@ -1073,7 +1152,7 @@ public class PortTasksPlugin extends Plugin
 			}
 		}
 		Player player = client.getLocalPlayer();
-		return BountyHunt.of(bountyWiki, monsters, loopBoards, taskId ->
+		return BountyHunt.of(bountyWiki, monsters, unreachablePorts(), loopBoards, taskId ->
 			{
 				BountyTaskData d = BountyTaskData.fromId(taskId);
 				return d == null ? -1 : d.getDbrow();
@@ -1689,11 +1768,7 @@ public class PortTasksPlugin extends Plugin
 			int level = sailingLevel;
 			Set<PortLocation> usable = LoopSuggester.allPorts();
 			usable.removeAll(LoopPorts.parse(config.routingLoopExclude()).ports());
-			usable.removeIf(p -> level > 0 && p.getSailingLevelRequired() != null && p.getSailingLevelRequired() > level);
-			if (Quest.SONG_OF_THE_ELVES.getState(client) != QuestState.FINISHED)
-			{
-				usable.remove(PortLocation.PRIFDDINAS);
-			}
+			usable.removeAll(unreachablePorts());
 			List<LoopSuggester.Candidate> pool = new ArrayList<>();
 			for (CourierTaskData d : CourierTaskData.all())
 			{

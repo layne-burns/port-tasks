@@ -65,7 +65,25 @@ public class BountyHuntTest
 	// Task id doubles as dbrow here.
 	private BountyHunt hunt(Set<String> held)
 	{
-		return BountyHunt.of(data, List.of("Great white shark"), memory, id -> id, held, 92, null, t -> 1000);
+		return hunt(held, Set.of());
+	}
+
+	private BountyHunt hunt(Set<String> held, Set<PortLocation> unreachable)
+	{
+		return BountyHunt.of(data, List.of("Great white shark"), unreachable, memory, id -> id, held, 99, null, t -> 1000);
+	}
+
+	@Test
+	public void unreachableBoardsAreLeftOut()
+	{
+		// At 99 Prifddinas' level-95 liver task counts, until Prifddinas is unreachable (no Song of the Elves).
+		assertEquals(3, hunt(Set.of()).parts.get(1).boards.size());
+		BountyHunt h = hunt(Set.of(), Set.of(PortLocation.PRIFDDINAS));
+		assertEquals(2, h.parts.get(1).boards.size());
+		for (BountyHunt.Board b : h.parts.get(1).boards)
+		{
+			assertTrue(b.port != PortLocation.PRIFDDINAS);
+		}
 	}
 
 	@Test
@@ -78,8 +96,10 @@ public class BountyHuntTest
 		assertEquals(PortLocation.PORT_ROBERTS, jaw.boards.get(0).port);
 		assertEquals(BountyHunt.State.ALWAYS, jaw.boards.get(0).state);
 		assertEquals(BountyHunt.State.UNCHECKED, jaw.boards.get(1).state);
-		// Prifddinas needs level 95: left out at 92.
-		assertEquals(2, h.parts.get(1).boards.size());
+		assertEquals(3, h.parts.get(1).boards.size());
+		// At level 92 Prifddinas' level-95 task is left out.
+		BountyHunt low = BountyHunt.of(data, List.of("Great white shark"), Set.of(), memory, id -> id, Set.of(), 92, null, t -> 1000);
+		assertEquals(2, low.parts.get(1).boards.size());
 		assertEquals(PortLocation.PORT_ROBERTS, h.next);
 	}
 
@@ -88,7 +108,7 @@ public class BountyHuntTest
 	{
 		seen.put(PortLocation.CORSAIR_COVE, Set.of(1));
 		seen.put(PortLocation.LANDS_END, Set.of(527));
-		BountyHunt h = hunt(Set.of("Great white shark jaw"));
+		BountyHunt h = hunt(Set.of("Great white shark jaw"), Set.of(PortLocation.PRIFDDINAS));
 		assertTrue(h.parts.get(0).held);
 		BountyHunt.Part liver = h.parts.get(1);
 		assertEquals(PortLocation.LANDS_END, liver.boards.get(0).port);
@@ -103,6 +123,6 @@ public class BountyHuntTest
 	{
 		seen.put(PortLocation.CORSAIR_COVE, Set.of());
 		seen.put(PortLocation.LANDS_END, Set.of());
-		assertNull(hunt(Set.of("Great white shark jaw")).next);
+		assertNull(hunt(Set.of("Great white shark jaw"), Set.of(PortLocation.PRIFDDINAS)).next);
 	}
 }
