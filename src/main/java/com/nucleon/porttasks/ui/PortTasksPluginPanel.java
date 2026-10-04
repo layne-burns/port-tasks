@@ -94,6 +94,9 @@ public class PortTasksPluginPanel extends PluginPanel
 		private final FitLabel loopLabel = new FitLabel();
 		private final JLabel suggestLink = new JLabel("Suggest loops");
 		private final JPanel suggestionsView = new JPanel();
+		// Routing extension: the loop settings as tick boxes, opened on request.
+		private final JLabel editLink = new JLabel("Edit loop ports");
+		private final LoopPortEditor portEditor;
 		private final JPanel statusView = new JPanel();
 		// Routing extension: the bounty hunt.
 		private final JPanel huntView = new JPanel();
@@ -184,8 +187,27 @@ public class PortTasksPluginPanel extends PluginPanel
 			suggestionsView.setAlignmentX(LEFT_ALIGNMENT);
 			statusView.setLayout(new BoxLayout(statusView, BoxLayout.Y_AXIS));
 			statusView.setAlignmentX(LEFT_ALIGNMENT);
+			editLink.setFont(FontManager.getRunescapeSmallFont());
+			editLink.setForeground(config.routingLegColor());
+			editLink.setAlignmentX(LEFT_ALIGNMENT);
+			editLink.setToolTipText("Tick the loop's ports, the boards to gather by sea only, and ports to keep out of suggestions");
+			portEditor = new LoopPortEditor(plugin, config);
+			portEditor.setVisible(false);
+			editLink.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mouseClicked(MouseEvent e)
+				{
+					boolean open = !portEditor.isVisible();
+					portEditor.setVisible(open);
+					editLink.setText(open ? "Close loop ports" : "Edit loop ports");
+					loopView.revalidate();
+				}
+			});
 			loopView.add(loopLabel);
 			loopView.add(statusView);
+			loopView.add(editLink);
+			loopView.add(portEditor);
 			loopView.add(suggestLink);
 			loopView.add(suggestionsView);
 			showLoop(config.routingLoop());
@@ -685,6 +707,12 @@ public class PortTasksPluginPanel extends PluginPanel
 			}
 			suggestionsView.revalidate();
 			suggestionsView.repaint();
+		}
+
+		/** Routing extension: keeps the loop port boxes in step with the loop settings. Swing thread only. */
+		public void syncLoopPorts()
+		{
+			portEditor.sync();
 		}
 
 		/** Routing extension: keeps a bag-size box in step when its toggle is changed in the config. Swing thread only. */

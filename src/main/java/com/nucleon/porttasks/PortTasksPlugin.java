@@ -66,6 +66,7 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -324,6 +325,8 @@ public class PortTasksPlugin extends Plugin
 	private static final Set<String> BOARD_KEYS = Set.of("noticeBoardHideOpacity", "noticeBoardHideIncompletable",
 		"noticeBoardHideBounty", "noticeBoardHideCourier", "noticeBoardHideUntagged", "highlightTaskConflicts",
 		"taskConflictColor", "minColor", "maxColor");
+	/** The port-list settings that the side panel's loop port boxes show and write. */
+	private static final Set<String> LOOP_PORT_KEYS = Set.of("routingLoop", "routingLoopSeaOnly", "routingLoopExclude");
 	/** Task -> colour picked for it in the side panel (RGB); see taskColourKey. Kept in the profile. */
 	private static final class TaskColours extends HashMap<String, Integer>
 	{
@@ -583,6 +586,10 @@ public class PortTasksPlugin extends Plugin
 			{
 				String loop = config.routingLoop();
 				SwingUtilities.invokeLater(() -> pluginPanel.showLoop(loop));
+			}
+			if (LOOP_PORT_KEYS.contains(event.getKey()))
+			{
+				SwingUtilities.invokeLater(pluginPanel::syncLoopPorts);
 			}
 			BagSize bag = BagSize.forFilterKey(event.getKey());
 			if (bag != null)
@@ -2177,6 +2184,26 @@ public class PortTasksPlugin extends Plugin
 	public void setLoop(List<PortLocation> ports)
 	{
 		configManager.setConfiguration(CONFIG_GROUP, "routingLoop",
+			ports.stream().map(PortLocation::getName).collect(Collectors.joining(", ")));
+	}
+
+	/**
+	 * Routing extension: ticks a port in or out of one of the port-list settings (the side panel's loop port boxes
+	 * write through here). A newly ticked port goes last, so the loop keeps the order its ports were ticked in.
+	 * The setting is rewritten with full port names, which drops any name that matched no port.
+	 */
+	public void setLoopPort(String key, PortLocation port, boolean on)
+	{
+		Set<PortLocation> ports = new LinkedHashSet<>(LoopPorts.parse(configManager.getConfiguration(CONFIG_GROUP, key)).ports());
+		if (on)
+		{
+			ports.add(port);
+		}
+		else
+		{
+			ports.remove(port);
+		}
+		configManager.setConfiguration(CONFIG_GROUP, key,
 			ports.stream().map(PortLocation::getName).collect(Collectors.joining(", ")));
 	}
 

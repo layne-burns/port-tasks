@@ -90,6 +90,8 @@ The last one guards against a high marginal ratio on a tiny pick that lowers the
 
 A **loop** is a small set of ports `L` the player sails between for a whole session, chosen so that the notice boards there offer mostly large bags for tasks inside `L`. It is a setting (**Loop ports**, a list of names), separate from the bag-size filter: the filter decides *which rewards* count, the loop decides *where to sail*. They meet only in the loop suggestions (§2.4.1), which count allowed bag sizes only.
 
+**Editing the port lists** (3 October 2026). The three port-list settings (**Loop ports**, **Gather by sea only**, **Not in loop suggestions**) are edited as tick boxes in the side panel (**Edit loop ports**: one row per port, alphabetical, columns Loop / Sea / Skip; Sea is greyed for ports without a notice board). Typed names were error-prone, so the text fields are hidden from the config panel. The settings themselves stay comma-separated full port names (suggestions write the same setting, and the boxes follow any change). A newly ticked loop port goes last, so the loop keeps the order its ports were ticked in, which is the order boards are gathered in.
+
 - A task is **in the loop** if its pickup and delivery ports are both in `L` (it is taken at a loop board anyway).
 - **Board ranking:** in-loop tasks rank first, then the rest, each group by the ranking metric. Off-loop tasks are still shown and scored: dimmed under an "Off loop" divider in the side list, and badged "off loop" in grey on the board. Rationale: the §2.2 margins don't see the cost of getting back into the loop afterwards (the plan's end isn't valued), so the loop stands in for that.
 - **Best set:** chosen from in-loop tasks only.

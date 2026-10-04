@@ -88,7 +88,8 @@ public interface PortTasksConfig extends Config
 			+ " Board tasks that stay inside the loop rank first and the best set only takes them; others are still"
 			+ " shown, marked off loop. Leave empty for no loop. The side panel suggests loops",
 		section = planningSection,
-		position = 3
+		position = 3,
+		hidden = true
 	)
 	default String routingLoop()
 	{
@@ -101,7 +102,8 @@ public interface PortTasksConfig extends Config
 		description = "Loop ports whose board you don't teleport to while gathering (e.g. Lunar Isle), separated by commas."
 			+ " They are left out of the gather; you look at them when the route docks there",
 		section = planningSection,
-		position = 4
+		position = 4,
+		hidden = true
 	)
 	default String routingLoopSeaOnly()
 	{
@@ -115,7 +117,8 @@ public interface PortTasksConfig extends Config
 			+ " Ports above your Sailing level, and ports behind a quest you haven't finished (Prifddinas: Song of the Elves;"
 			+ " Port Tyras: Regicide, and Song of the Elves for its board), are left out anyway",
 		section = planningSection,
-		position = 5
+		position = 5,
+		hidden = true
 	)
 	default String routingLoopExclude()
 	{
