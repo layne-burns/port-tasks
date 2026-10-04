@@ -133,7 +133,8 @@ public final class BoardScorer
 
 	/**
 	 * With {@code filler} (loop mode, the loop is dry: SPEC-routing.md §2.4.2) the point is to complete tasks
-	 * until the boards reset, so every size and every task counts, ranked by added cost, least first.
+	 * until the boards reset, so every task counts, in or out of the loop, ranked by added cost, least first.
+	 * Every bag size counts too, but only with "Dry loop: any bag size" on; otherwise the bag filter holds.
 	 */
 	public List<Score> score(List<CourierTask> held, PortLocation start, Collection<CourierTaskData> offered, int sailingLevel,
 		boolean filler)
@@ -164,7 +165,8 @@ public final class BoardScorer
 		List<Score> scores = new ArrayList<>();
 		for (CourierTaskData d : offered)
 		{
-			if (heldIds.contains(d.getId()) || !filler && !passesBagFilter(d) || sailingLevel > 0 && d.getLevelRequired() > sailingLevel)
+			boolean anySize = filler && config.routingFillersAnySize();
+			if (heldIds.contains(d.getId()) || !anySize && !passesBagFilter(d) || sailingLevel > 0 && d.getLevelRequired() > sailingLevel)
 			{
 				continue;
 			}

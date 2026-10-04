@@ -2207,8 +2207,8 @@ public class PortTasksPlugin extends Plugin
 	/** Routing extension: true if the "only Large/Huge bags" filter rules out this offered courier task. */
 	public boolean bagFilterHides(CourierTaskData d)
 	{
-		// A dry loop wants any task that gets the boards to their reset, so nothing is dimmed then.
-		return !loopDry() && !boardScorer.passesBagFilter(d);
+		// A dry loop with "any bag size" on wants any task that gets the boards to their reset: nothing is dimmed.
+		return !(loopDry() && config.routingFillersAnySize()) && !boardScorer.passesBagFilter(d);
 	}
 
 	/** Routing extension: base XP for a task (learned from play, else the wiki), or null. */

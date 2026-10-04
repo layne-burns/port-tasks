@@ -122,6 +122,19 @@ public interface PortTasksConfig extends Config
 		return "";
 	}
 
+	@ConfigItem(
+		keyName = "routingFillersAnySize",
+		name = "Dry loop: any bag size",
+		description = "When the loop boards have nothing left worth taking, list filler tasks of every bag size, quickest first,"
+			+ " to reach the board reset sooner. Off: fillers keep to the bag sizes ticked under Notice board",
+		section = planningSection,
+		position = 6
+	)
+	default boolean routingFillersAnySize()
+	{
+		return false;
+	}
+
 	// ---------------------------------------------------------------- Notice board
 
 	@ConfigSection(
