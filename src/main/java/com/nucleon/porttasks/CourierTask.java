@@ -43,4 +43,10 @@ public class CourierTask implements Task
 	private int delivered;
 	private Color overlayColor;
 	private int cargoTaken;
+
+	/** A copy for the side panel, which reads it on the Swing thread while this one changes on the client thread. */
+	public CourierTask copy()
+	{
+		return new CourierTask(data, slot, delivered, overlayColor, cargoTaken);
+	}
 }

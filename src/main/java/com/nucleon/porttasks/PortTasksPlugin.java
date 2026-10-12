@@ -2395,7 +2395,8 @@ public class PortTasksPlugin extends Plugin
 						int collected = Math.max(0, Math.min(required, required - remaining));
 
 						task.setItemsCollected(collected);
-						SwingUtilities.invokeLater(() -> pluginPanel.updateBountyPanel(task));
+						BountyTask shown = task.copy(); // the panel reads it on the Swing thread
+						SwingUtilities.invokeLater(() -> pluginPanel.updateBountyPanel(shown));
 						return;
 					}
 				}
@@ -2424,13 +2425,48 @@ public class PortTasksPlugin extends Plugin
 
 	/**
 	 * Rebuilds the side panel on the Swing thread (task events arrive on the client thread, and Swing must only
-	 * be touched from its own), from a copy of the task lists so the client thread can keep changing them.
+	 * be touched from its own), from copies of the tasks: the panel reads its own while the client thread keeps
+	 * changing the held ones (a colour picked in the panel comes back through setTaskColour).
 	 */
 	private void rebuildPanel()
 	{
-		List<Task> tasks = new ArrayList<>(courierTasks);
-		tasks.addAll(bountyTasks);
+		List<Task> tasks = new ArrayList<>();
+		for (CourierTask t : courierTasks)
+		{
+			tasks.add(t.copy());
+		}
+		for (BountyTask t : bountyTasks)
+		{
+			tasks.add(t.copy());
+		}
 		SwingUtilities.invokeLater(() -> pluginPanel.rebuild(tasks));
+	}
+
+	/**
+	 * Routing extension: a colour picked in the side panel for a task. The panel shows copies of the held tasks,
+	 * so the held one is changed here, on the client thread, and the overlays follow; closing the picker saves
+	 * it (saveSlotSettings).
+	 */
+	public void setTaskColour(int slot, int dbrow, Color colour)
+	{
+		clientThread.invokeLater(() ->
+		{
+			for (CourierTask t : courierTasks)
+			{
+				if (t.getSlot() == slot && t.getData().getDbrow() == dbrow)
+				{
+					t.setOverlayColor(colour);
+				}
+			}
+			for (BountyTask t : bountyTasks)
+			{
+				if (t.getSlot() == slot && t.getData().getDbrow() == dbrow)
+				{
+					t.setOverlayColor(colour);
+				}
+			}
+			deferred.mark(STALE_VIEW);
+		});
 	}
 
 	private void removeTasksForSlot(int slot)

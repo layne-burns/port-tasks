@@ -43,4 +43,10 @@ public class BountyTask implements Task
 	private int slot;
 	private Color overlayColor;
 	public int itemsCollected;
+
+	/** A copy for the side panel, which reads it on the Swing thread while this one changes on the client thread. */
+	public BountyTask copy()
+	{
+		return new BountyTask(data, slot, overlayColor, itemsCollected);
+	}
 }

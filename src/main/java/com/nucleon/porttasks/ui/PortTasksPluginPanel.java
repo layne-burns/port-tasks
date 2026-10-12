@@ -267,7 +267,7 @@ public class PortTasksPluginPanel extends PluginPanel
 			add(centerPanel, BorderLayout.CENTER);
 		}
 
-		/** Shows these tasks (a copy the caller made on the client thread). Swing thread only. */
+		/** Shows these tasks (copies the caller made on the client thread; the panel keeps them). Swing thread only. */
 		public void rebuild(List<Task> tasks)
 		{
 			markerView.removeAll();
@@ -727,7 +727,7 @@ public class PortTasksPluginPanel extends PluginPanel
 			BountyRow r = bountyRows.get(task.getSlot());
 			if (r != null)
 			{
-				r.full.refresh();
+				r.full.refresh(task);
 				bountySummary(r.row, task);
 			}
 		}
