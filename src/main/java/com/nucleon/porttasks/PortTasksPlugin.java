@@ -41,6 +41,7 @@ import com.nucleon.porttasks.routing.BountySpawns;
 import com.nucleon.porttasks.routing.SavedSafespots;
 import com.nucleon.porttasks.routing.BountyWikiData;
 import com.nucleon.porttasks.routing.CourierWikiData;
+import com.nucleon.porttasks.routing.DeferredWork;
 import com.nucleon.porttasks.routing.DepositGuard;
 import com.nucleon.porttasks.routing.DockGuard;
 import com.nucleon.porttasks.routing.LoopBoards;
@@ -217,6 +218,14 @@ public class PortTasksPlugin extends Plugin
 	private String overheadWarning;
 	/** Routing extension: what the port overlays show; rebuilt by rebuildView() on the events that change it. */
 	private volatile PortView view = PortView.EMPTY;
+	/**
+	 * Routing extension: work that events mark stale and refreshStale() does once at the end of the client tick
+	 * (see DeferredWork): the plan and an open board's scores, the side panel, and the overlays' view.
+	 */
+	private static final int STALE_ROUTE = 1;
+	private static final int STALE_PANEL = 2;
+	private static final int STALE_VIEW = 4;
+	private DeferredWork deferred;
 	private int overheadWarningUntil;
 	private final WantedItems wantedItems = new WantedItems();
 	private BoardScorer boardScorer;
@@ -408,6 +417,7 @@ public class PortTasksPlugin extends Plugin
 		log.info("Starting plugin Port Tasks");
 
 		boatLocator = new BoatLocator(client);
+		deferred = new DeferredWork(clientThread::invokeAtTickEnd, this::refreshStale);
 		setSearchExecutor = Executors.newSingleThreadExecutor(r ->
 		{
 			Thread t = new Thread(r, "port-tasks-best-set");
@@ -511,7 +521,7 @@ public class PortTasksPlugin extends Plugin
 
 		clientToolbar.addNavigation(navigationButton);
 		registerOverlays();
-		refreshPanel();
+		rebuildPanel();
 
 		loadWidgetTags();
 		overlayManager.add(taskHighlight);
@@ -549,8 +559,13 @@ public class PortTasksPlugin extends Plugin
 		// and drop the leg sent to Shortest Path, which otherwise keeps a sailing route with transports off.
 		BountyAfk afk = bountyAfk;
 		RoutingService routing = routingService;
+		DeferredWork pending = deferred;
 		clientThread.invoke(() ->
 		{
+			if (pending != null)
+			{
+				pending.clear(); // or a replan still due at the end of this tick would re-send the leg cleared below
+			}
 			if (afk != null)
 			{
 				afk.off("Port Tasks stopped");
@@ -610,15 +625,7 @@ public class PortTasksPlugin extends Plugin
 				boolean on = BoardScorer.bagEnabled(config, bag);
 				SwingUtilities.invokeLater(() -> pluginPanel.setBagEnabled(bag, on));
 			}
-			clientThread.invokeLater(() ->
-			{
-				routingService.replan(courierTasks);
-				if (!offeredTasks.isEmpty())
-				{
-					rescoreBoard();
-				}
-				rebuildView();
-			});
+			clientThread.invokeLater(() -> deferred.mark(STALE_ROUTE | STALE_VIEW));
 		}
 		if (BOARD_KEYS.contains(event.getKey()))
 		{
@@ -712,12 +719,8 @@ public class PortTasksPlugin extends Plugin
 			int value = event.getValue();
 			handlePortTaskTrigger(varbit, value);
 			checkAfkParts();
-			routingService.replan(courierTasks);
-			if (!offeredTasks.isEmpty())
-			{
-				rescoreBoard();
-			}
-			rebuildView();
+			// The five slots' varbits arrive together at login and when a task is taken: plan once, at the end of the tick.
+			deferred.mark(STALE_ROUTE | STALE_VIEW);
 		}
 		else if (varbitId == VarbitID.SAILING_BOAT_FACILITY_LOCKEDIN)
 		{
@@ -755,13 +758,12 @@ public class PortTasksPlugin extends Plugin
 					bountyAfk.off("docked");
 				}
 			}
-			rebuildView();
+			deferred.mark(STALE_VIEW);
 		}
 		else if (BoatLocator.locatesBoat(varbitId))
 		{
 			// The boat docked somewhere else (or another boat is current): plan from its new port.
-			routingService.replan(courierTasks);
-			rebuildView();
+			deferred.mark(STALE_ROUTE | STALE_VIEW);
 		}
 	}
 
@@ -1126,6 +1128,32 @@ public class PortTasksPlugin extends Plugin
 		PortLocation docked = boatLocator.dockedPort();
 		view = PortView.build(courierTasks, routingService, docked, config, overheadWarning(docked), this::cargoName,
 			loopStatus, freeSlots());
+	}
+
+	/**
+	 * Routing extension: does the work this tick's events marked stale, in dependency order: the plan (and the
+	 * open board's scores, ranked against the held tasks), the side panel, then the overlays' view, which reads
+	 * the plan. A burst of slot varbits, or a crate moved (a varbit and an inventory change), so costs one of
+	 * each rather than one per event. Runs at the end of the client tick (see DeferredWork).
+	 */
+	private void refreshStale(int what)
+	{
+		if ((what & STALE_ROUTE) != 0)
+		{
+			routingService.replan(courierTasks);
+			if (!offeredTasks.isEmpty())
+			{
+				rescoreBoard();
+			}
+		}
+		if ((what & STALE_PANEL) != 0)
+		{
+			rebuildPanel();
+		}
+		if ((what & STALE_VIEW) != 0)
+		{
+			rebuildView();
+		}
 	}
 
 	/**
@@ -1506,7 +1534,7 @@ public class PortTasksPlugin extends Plugin
 		}
 		if ((event.getContainerId() == InventoryID.INV || event.getContainerId() == InventoryID.WORN) && !courierTasks.isEmpty())
 		{
-			rebuildView();
+			deferred.mark(STALE_VIEW);
 		}
 	}
 
@@ -2388,11 +2416,17 @@ public class PortTasksPlugin extends Plugin
 		return 0;
 	}
 
+	/** Rebuilds the side panel once this tick's task events are in (several slots change at once at login). */
+	private void refreshPanel()
+	{
+		deferred.mark(STALE_PANEL);
+	}
+
 	/**
 	 * Rebuilds the side panel on the Swing thread (task events arrive on the client thread, and Swing must only
 	 * be touched from its own), from a copy of the task lists so the client thread can keep changing them.
 	 */
-	private void refreshPanel()
+	private void rebuildPanel()
 	{
 		List<Task> tasks = new ArrayList<>(courierTasks);
 		tasks.addAll(bountyTasks);
@@ -2416,12 +2450,7 @@ public class PortTasksPlugin extends Plugin
 			handlePortTaskTrigger(varbit, value);
 		}
 		// Plans are otherwise made on varbit changes, and a reload (e.g. after a plugin restart) changes none.
-		routingService.replan(courierTasks);
-		if (!offeredTasks.isEmpty())
-		{
-			rescoreBoard();
-		}
-		rebuildView();
+		deferred.mark(STALE_ROUTE | STALE_VIEW);
 	}
 
 	private void clearTasksForReload()
