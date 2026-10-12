@@ -13,8 +13,8 @@ import net.runelite.api.coords.WorldPoint;
  * what the AFK mode can rely on: whose hitsplats crew cannon hits are, what the crew says when switching fire
  * mode (chat or overhead text), what an Examine click on a sea monster looks like, and the corpse's spawn and
  * despawn. Only while the player is on their boat. Temporary: removed once the AFK mode is built on it.
- * Logged at debug (RuneLite runs at info), since these fire on every hit, overhead line and click at sea.
- * Client thread only.
+ * Logged at debug (RuneLite runs at info), since these fire on every hit, overhead line and click at sea;
+ * with debug off nothing here is computed. Client thread only.
  */
 @Slf4j
 public final class BountyAfkDiagnostics
@@ -39,7 +39,7 @@ public final class BountyAfkDiagnostics
 	/** A hitsplat on an NPC: logged if it is a bounty monster (live or dead). */
 	public void hitsplat(Actor target, int type, boolean mine, boolean others, int amount, WorldPoint boat)
 	{
-		if (!(target instanceof NPC))
+		if (!log.isDebugEnabled() || !(target instanceof NPC))
 		{
 			return;
 		}
@@ -72,6 +72,10 @@ public final class BountyAfkDiagnostics
 	/** A menu click on an NPC (Examine and the rest). */
 	public void npcClick(String option, String target, NPC npc)
 	{
+		if (!log.isDebugEnabled())
+		{
+			return;
+		}
 		index();
 		log.debug("[bountyafk] click '{}' on '{}' npc {} ({})", option, target, npc.getId(),
 			live.containsKey(npc.getId()) ? "bounty monster" : dead.containsKey(npc.getId()) ? "bounty corpse" : "other");
@@ -80,6 +84,10 @@ public final class BountyAfkDiagnostics
 	/** A bounty corpse spawned or despawned. */
 	public void corpse(NPC npc, boolean spawned, WorldPoint boat)
 	{
+		if (!log.isDebugEnabled())
+		{
+			return;
+		}
 		WorldPoint at = npc.getWorldLocation();
 		log.debug("[bountyafk] corpse {} {} (npc {}) dist {}", spawned ? "spawned" : "despawned", npc.getName(), npc.getId(),
 			boat == null || at == null ? "?" : Integer.toString(boat.distanceTo2D(at)));
