@@ -547,8 +547,24 @@ public class PortTasksPlugin extends Plugin
 	protected void shutDown()
 	{
 		log.info("Stopping Port Tasks");
+		// Undo what the game and other plugins were told, on the client thread like the handlers that set it:
+		// turn Bounty AFK off (its chat line is Watchdog's cue to end the blackout, and AnkiScape gets "stop"),
+		// and drop the leg sent to Shortest Path, which otherwise keeps a sailing route with transports off.
+		BountyAfk afk = bountyAfk;
+		RoutingService routing = routingService;
+		clientThread.invoke(() ->
+		{
+			if (afk != null)
+			{
+				afk.off("Port Tasks stopped");
+			}
+			if (routing != null)
+			{
+				routing.clear();
+			}
+		});
 		clientToolbar.removeNavigation(navigationButton);
-		pluginPanel = null;
+		// The panel stays: updates already queued on the EDT would otherwise hit null, and startUp makes a new one.
 		navigationButton = null;
 		gangplanks.clear();
 		noticeboards.clear();
@@ -1015,7 +1031,7 @@ public class PortTasksPlugin extends Plugin
 		}
 		if (examine && boatLocator.onBoat())
 		{
-			log.info("[bountyafk] examine '{}' action {} id {} npc {}", event.getMenuTarget(), event.getMenuAction(), event.getId(),
+			log.debug("[bountyafk] examine '{}' action {} id {} npc {}", event.getMenuTarget(), event.getMenuAction(), event.getId(),
 				clickedNpc == null ? null : clickedNpc.getId());
 		}
 		if (clickedNpc != null && boatLocator.onBoat())
@@ -2437,24 +2453,28 @@ public class PortTasksPlugin extends Plugin
 	 */
 	public void saveSlotSettings()
 	{
-		taskColours.clear();
-		for (CourierTask t : courierTasks)
+		// Called from the colour picker on the EDT; the task lists belong to the client thread, so read them there.
+		clientThread.invokeLater(() ->
 		{
-			putTaskColour(t.getSlot(), t.getData().getDbrow(), t.getOverlayColor());
-		}
-		for (BountyTask t : bountyTasks)
-		{
-			putTaskColour(t.getSlot(), t.getData().getDbrow(), t.getOverlayColor());
-		}
-		if (taskColours.isEmpty())
-		{
-			configManager.unsetConfiguration(CONFIG_GROUP, CONFIG_KEY_TASK_COLOURS);
-		}
-		else
-		{
-			configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_TASK_COLOURS, gson.toJson(taskColours));
-		}
-		clientThread.invokeLater(this::rebuildView);
+			taskColours.clear();
+			for (CourierTask t : courierTasks)
+			{
+				putTaskColour(t.getSlot(), t.getData().getDbrow(), t.getOverlayColor());
+			}
+			for (BountyTask t : bountyTasks)
+			{
+				putTaskColour(t.getSlot(), t.getData().getDbrow(), t.getOverlayColor());
+			}
+			if (taskColours.isEmpty())
+			{
+				configManager.unsetConfiguration(CONFIG_GROUP, CONFIG_KEY_TASK_COLOURS);
+			}
+			else
+			{
+				configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_TASK_COLOURS, gson.toJson(taskColours));
+			}
+			rebuildView();
+		});
 	}
 
 	private void putTaskColour(int slot, int dbrow, Color colour)

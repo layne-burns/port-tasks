@@ -214,7 +214,7 @@ public class NoticeBoardTooltip extends Overlay
 			Widget w = data.getTaskWidget();
 
 			Rectangle bounds = w.getBounds();
-			if (bounds != null & bounds.contains(mouse.getX(), mouse.getY()))
+			if (bounds != null && bounds.contains(mouse.getX(), mouse.getY()))
 			{
 				return dbrow;
 			}
