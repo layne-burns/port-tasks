@@ -40,9 +40,7 @@ public class CourierTask implements Task
 {
 	private CourierTaskData data;
 	private int slot;
-	private boolean taken;
 	private int delivered;
-	private boolean active;
 	private Color overlayColor;
 	private int cargoTaken;
 }

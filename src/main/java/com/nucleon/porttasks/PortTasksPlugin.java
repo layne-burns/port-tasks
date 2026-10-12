@@ -86,8 +86,6 @@ import net.runelite.api.Actor;
 import net.runelite.api.Constants;
 import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
-import net.runelite.api.Item;
-import net.runelite.api.ItemContainer;
 import net.runelite.api.KeyCode;
 import net.runelite.api.Menu;
 import net.runelite.api.MenuAction;
@@ -316,7 +314,6 @@ public class PortTasksPlugin extends Plugin
 	private int[] varPlayers;
 	private PortTasksPluginPanel pluginPanel;
 	private NavigationButton navigationButton;
-	private Item[] previousInventory;
 	private static final String PLUGIN_NAME = "Port Tasks";
 	private static final String ICON_FILE = "icon.png";
 	public static final String CONFIG_GROUP = "porttasks";
@@ -2316,8 +2313,8 @@ public class PortTasksPlugin extends Plugin
 				if (courrierData != null)
 				{
 					// Progress varbits may arrive before the id at login, when there was no task to apply them to.
-					courierTasks.add(new CourierTask(courrierData, slot, false, slotVarbit(slot, PortTaskTrigger.TaskType.DELIVERED),
-						true, taskColour(slot, courrierData.getDbrow()), slotVarbit(slot, PortTaskTrigger.TaskType.TAKEN)));
+					courierTasks.add(new CourierTask(courrierData, slot, slotVarbit(slot, PortTaskTrigger.TaskType.DELIVERED),
+						taskColour(slot, courrierData.getDbrow()), slotVarbit(slot, PortTaskTrigger.TaskType.TAKEN)));
 					routingDiagnostics.logTask(slot, courrierData);
 					refreshPanel();
 					return;
@@ -2326,7 +2323,7 @@ public class PortTasksPlugin extends Plugin
 				BountyTaskData bountyData = BountyTaskData.fromId(value);
 				if (bountyData != null)
 				{
-					bountyTasks.add(new BountyTask(bountyData, slot, false, 0, true, taskColour(slot, bountyData.getDbrow()), 0));
+					bountyTasks.add(new BountyTask(bountyData, slot, taskColour(slot, bountyData.getDbrow()), 0));
 					refreshPanel();
 				}
 				return;
@@ -2532,37 +2529,6 @@ public class PortTasksPlugin extends Plugin
 			case 4: return config.getNavColor5();
 			default: return Color.GREEN;
 		}
-	}
-
-	int getInventoryItemCount(int itemId)
-	{
-		ItemContainer inv = client.getItemContainer(InventoryID.INV);
-		if (inv == null)
-		{
-			return 0;
-		}
-		int total = 0;
-		for (Item item : inv.getItems())
-		{
-			if (item.getId() == itemId)
-			{
-				total += item.getQuantity();
-			}
-		}
-		return total;
-	}
-
-	private int getCount(Item[] items, int itemId)
-	{
-		int amt = 0;
-		for (Item item : items)
-		{
-			if (item.getId() == itemId)
-			{
-				amt += item.getQuantity();
-			}
-		}
-		return amt;
 	}
 
 	/**
