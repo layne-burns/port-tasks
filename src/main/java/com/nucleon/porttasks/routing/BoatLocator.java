@@ -67,6 +67,23 @@ public final class BoatLocator
 		return p == PortLocation.EMPTY ? null : p;
 	}
 
+	/** True for a varbit {@link #boatPort()} reads (the boat slot, or a boat's dock): the plan's start may have changed. */
+	public static boolean locatesBoat(int varbitId)
+	{
+		if (varbitId == VarbitID.SAILING_LAST_PERSONAL_BOAT_BOARDED)
+		{
+			return true;
+		}
+		for (int id : BOAT_PORT_VARBITS)
+		{
+			if (id == varbitId)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Boat slot (1–5) of the personal boat last boarded, or 0 if none. */
 	public int currentBoatSlot()
 	{

@@ -229,7 +229,8 @@ public class CourierTaskPanel extends JPanel implements TaskPanel
 		RuneliteColorPicker colourPicker = getColorPicker(color);
 		colourPicker.setOnColorChange(c ->
 		{
-			courierTask.setOverlayColor(c);
+			courierTask.setOverlayColor(c); // the panel's copy; the held task follows on the client thread
+			plugin.setTaskColour(courierTask.getSlot(), courierTask.getData().getDbrow(), c);
 			PortTaskOverlayColor.setBorder(new MatteBorder(0, 0, 3, 0, courierTask.getOverlayColor()));
 			PortTaskOverlayColor.setIcon(BORDER_COLOR_ICON);
 			updateColorIndicators();

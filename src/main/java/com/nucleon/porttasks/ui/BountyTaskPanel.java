@@ -224,7 +224,8 @@ public BountyTaskPanel(PortTasksPlugin plugin, BountyTask bountyTask, ClientThre
 		RuneliteColorPicker colourPicker = getColorPicker(color);
 		colourPicker.setOnColorChange(c ->
 		{
-			bountyTask.setOverlayColor(c);
+			bountyTask.setOverlayColor(c); // the panel's copy; the held task follows on the client thread
+			plugin.setTaskColour(bountyTask.getSlot(), bountyTask.getData().getDbrow(), c);
 			PortTaskOverlayColor.setBorder(new MatteBorder(0, 0, 3, 0, bountyTask.getOverlayColor()));
 			PortTaskOverlayColor.setIcon(BORDER_COLOR_ICON);
 			updateColorIndicators();
@@ -276,10 +277,11 @@ public BountyTaskPanel(PortTasksPlugin plugin, BountyTask bountyTask, ClientThre
 		});
 	}
 
-	public void refresh()
+	/** Shows this task's progress (a copy made on the client thread). Swing thread only. */
+	public void refresh(BountyTask task)
 	{
-		int itemsLooted = bountyTask.getItemsCollected();
-		int lootRequirement = bountyTask.getData().itemQuantity;
+		int itemsLooted = task.getItemsCollected();
+		int lootRequirement = task.getData().itemQuantity;
 
 		cargoRemainingText.setText("Items: " + itemsLooted + "/" + lootRequirement);
 		cargoRemainingText.setToolTipText("Remaining items");
