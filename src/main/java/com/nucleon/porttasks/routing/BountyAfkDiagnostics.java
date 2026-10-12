@@ -13,6 +13,7 @@ import net.runelite.api.coords.WorldPoint;
  * what the AFK mode can rely on: whose hitsplats crew cannon hits are, what the crew says when switching fire
  * mode (chat or overhead text), what an Examine click on a sea monster looks like, and the corpse's spawn and
  * despawn. Only while the player is on their boat. Temporary: removed once the AFK mode is built on it.
+ * Logged at debug (RuneLite runs at info), since these fire on every hit, overhead line and click at sea.
  * Client thread only.
  */
 @Slf4j
@@ -50,7 +51,7 @@ public final class BountyAfkDiagnostics
 			return;
 		}
 		WorldPoint at = target.getWorldLocation();
-		log.info("[bountyafk] hitsplat on {} (npc {}, {}): type {} mine {} others {} amount {} dist {}", target.getName(), id,
+		log.debug("[bountyafk] hitsplat on {} (npc {}, {}): type {} mine {} others {} amount {} dist {}", target.getName(), id,
 			live.containsKey(id) ? "live" : "dead", type, mine, others, amount,
 			boat == null || at == null ? "?" : Integer.toString(boat.distanceTo2D(at)));
 	}
@@ -58,21 +59,21 @@ public final class BountyAfkDiagnostics
 	/** Overhead text on any actor (crew, the player, monsters). */
 	public void overhead(Actor actor, String text)
 	{
-		log.info("[bountyafk] overhead {} {} '{}': '{}'", actor instanceof NPC ? "npc" : "player",
+		log.debug("[bountyafk] overhead {} {} '{}': '{}'", actor instanceof NPC ? "npc" : "player",
 			actor instanceof NPC ? ((NPC) actor).getId() : "", actor.getName(), text);
 	}
 
 	/** A chat message of any type but public/private chat. */
 	public void chat(String type, String name, String message)
 	{
-		log.info("[bountyafk] chat {} '{}': '{}'", type, name, message);
+		log.debug("[bountyafk] chat {} '{}': '{}'", type, name, message);
 	}
 
 	/** A menu click on an NPC (Examine and the rest). */
 	public void npcClick(String option, String target, NPC npc)
 	{
 		index();
-		log.info("[bountyafk] click '{}' on '{}' npc {} ({})", option, target, npc.getId(),
+		log.debug("[bountyafk] click '{}' on '{}' npc {} ({})", option, target, npc.getId(),
 			live.containsKey(npc.getId()) ? "bounty monster" : dead.containsKey(npc.getId()) ? "bounty corpse" : "other");
 	}
 
@@ -80,7 +81,7 @@ public final class BountyAfkDiagnostics
 	public void corpse(NPC npc, boolean spawned, WorldPoint boat)
 	{
 		WorldPoint at = npc.getWorldLocation();
-		log.info("[bountyafk] corpse {} {} (npc {}) dist {}", spawned ? "spawned" : "despawned", npc.getName(), npc.getId(),
+		log.debug("[bountyafk] corpse {} {} (npc {}) dist {}", spawned ? "spawned" : "despawned", npc.getName(), npc.getId(),
 			boat == null || at == null ? "?" : Integer.toString(boat.distanceTo2D(at)));
 	}
 }

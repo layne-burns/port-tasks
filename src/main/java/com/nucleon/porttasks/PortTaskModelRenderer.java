@@ -120,9 +120,14 @@ public class PortTaskModelRenderer extends Overlay
 	}
 	public void highlightLocalPlayerCargoHold(Graphics2D graphics, Color color)
 	{
+		Player local = client.getLocalPlayer();
+		if (local == null)
+		{
+			return;
+		}
 		for (GameObject cargoHold : plugin.getCargoHolds())
 		{
-			if (cargoHold.getWorldView().getId() == client.getLocalPlayer().getWorldView().getId())
+			if (cargoHold.getWorldView().getId() == local.getWorldView().getId())
 			{
 			modelOutlineRenderer.drawOutline(cargoHold, 2, color, 250);
 			}
