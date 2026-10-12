@@ -497,7 +497,7 @@ public class PortTasksPlugin extends Plugin
 				sailingLevel = client.getRealSkillLevel(Skill.SAILING);
 			}
 		});
-		routingDiagnostics = new RoutingDiagnostics(client, courierWikiData, rewardValuer, boatLocator, xpLearner);
+		routingDiagnostics = new RoutingDiagnostics(courierWikiData, rewardValuer, xpLearner);
 
 		pluginPanel = new PortTasksPluginPanel(this, clientThread, itemManager, client, config);
 
@@ -757,9 +757,9 @@ public class PortTasksPlugin extends Plugin
 			}
 			rebuildView();
 		}
-		else if (RoutingDiagnostics.BOAT_VARBITS.containsKey(varbitId))
+		else if (BoatLocator.locatesBoat(varbitId))
 		{
-			routingDiagnostics.logBoatVarbit(varbitId, event.getValue());
+			// The boat docked somewhere else (or another boat is current): plan from its new port.
 			routingService.replan(courierTasks);
 			rebuildView();
 		}
