@@ -8,6 +8,7 @@ import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.Stroke;
 import java.util.Map;
 import javax.inject.Inject;
 import net.runelite.api.Client;
@@ -28,6 +29,8 @@ import net.runelite.client.ui.overlay.OverlayUtil;
  */
 class RoutingBoardOverlay extends Overlay
 {
+	private static final Stroke OUTLINE = new BasicStroke(2);
+
 	private final Client client;
 	private final PortTasksPlugin plugin;
 	private final PortTasksConfig config;
@@ -66,6 +69,10 @@ class RoutingBoardOverlay extends Overlay
 		}
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 		AlphaComposite tintAlpha = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, config.routingDetourOpacity() / 100f);
+		// Settings once per frame, not per task: each read goes through the config proxy and parses the value.
+		Color wanted = config.routingWantedColor();
+		Color leg = config.routingLegColor();
+		boolean bestSet = config.routingBestSet();
 		for (Map.Entry<Integer, OfferedTaskData> e : plugin.getOfferedTasks().entrySet())
 		{
 			BoardScorer.Score s = plugin.boardScore(e.getKey());
@@ -80,8 +87,8 @@ class RoutingBoardOverlay extends Overlay
 				// Not a scored courier task: a bounty the hunt is after gets outlined.
 				if (badges && plugin.hunted(e.getKey()))
 				{
-					outline(graphics, r, config.routingWantedColor(), 0);
-					OverlayUtil.renderTextLocation(graphics, new Point(r.x + 3, r.y + 12), "Hunt", config.routingWantedColor());
+					outline(graphics, r, wanted, 0);
+					OverlayUtil.renderTextLocation(graphics, new Point(r.x + 3, r.y + 12), "Hunt", wanted);
 				}
 				continue;
 			}
@@ -98,18 +105,18 @@ class RoutingBoardOverlay extends Overlay
 				continue;
 			}
 			// The best set's tasks are outlined (or, with that off, the single best task).
-			boolean picked = config.routingBestSet() ? plugin.inBestSet(e.getKey()) : s.rank == 1;
+			boolean picked = bestSet ? plugin.inBestSet(e.getKey()) : s.rank == 1;
 			if (picked)
 			{
-				outline(graphics, r, config.routingLegColor(), 0);
+				outline(graphics, r, leg, 0);
 			}
 			if (!s.wantedDrops.isEmpty())
 			{
-				outline(graphics, r, config.routingWantedColor(), picked ? 3 : 0);
+				outline(graphics, r, wanted, picked ? 3 : 0);
 			}
 			// With a loop set, tasks that leave it are ranked after the rest and badged in grey.
 			OverlayUtil.renderTextLocation(graphics, new Point(r.x + 3, r.y + 12), "#" + s.rank + (s.offLoop ? " off loop" : ""),
-				picked ? config.routingLegColor() : s.offLoop ? Color.GRAY : Color.WHITE);
+				picked ? leg : s.offLoop ? Color.GRAY : Color.WHITE);
 		}
 		return null;
 	}
@@ -117,7 +124,7 @@ class RoutingBoardOverlay extends Overlay
 	private static void outline(Graphics2D g, Rectangle r, Color c, int inset)
 	{
 		g.setColor(c);
-		g.setStroke(new BasicStroke(2));
+		g.setStroke(OUTLINE);
 		g.drawRect(r.x + inset, r.y + inset, r.width - 2 * inset, r.height - 2 * inset);
 	}
 }
